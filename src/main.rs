@@ -101,7 +101,6 @@ fn draw_background_with_children(commands: &mut Commands, color: Color) -> Entit
         .id()
 }
 
-
 fn toggle_background(
     mut query: Query<&mut Visibility>,
     keyboard: Res<Input<KeyCode>>,
