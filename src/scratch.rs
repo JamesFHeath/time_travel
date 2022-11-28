@@ -67,3 +67,34 @@ fn spawn_camera(mut commands: Commands) {
             //         0.0,
             //     )),
             // ),
+            
+// fn spawn_player(mut commands: Commands, ascii: Res<AsciiSheet>) {
+//     let player = spawn_ascii_sprite(
+//         &mut commands,
+//         &ascii,
+//         1,
+//         Color::rgb(0.3, 0.3, 0.9),
+//         Vec3::new(2.0 * TILE_SIZE, -2.0 * TILE_SIZE, 900.0),
+//     );
+
+//     commands
+//         .entity(player)
+//         .insert(Name::new("Player"))
+//         .insert(Player { speed: 3.0 })
+//         .id();
+
+//     let background = spawn_ascii_sprite(
+//         &mut commands,
+//         &ascii,
+//         0,
+//         Color::rgb(0.5, 0.5, 0.5),
+//         Vec3::new(0.0, 0.0, -1.0),
+//     );
+
+//     commands
+//         .entity(background)
+//         .insert(Name::new("Background"))
+//         .id(); //id() gives back the entity after creation
+
+//     commands.entity(player).push_children(&[background]);
+// }

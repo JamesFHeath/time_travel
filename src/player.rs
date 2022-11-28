@@ -10,7 +10,7 @@ use crate::{PLAYER_LEVEL, TILE_SIZE};
 
 pub struct PlayerPlugin;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum MovementDirection {
     UP,
     DOWN,
@@ -44,9 +44,60 @@ impl Plugin for PlayerPlugin {
 //     camera_transform.translation.y = player_transform.translation.y;
 // }
 
+fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
+    (player_speed * TILE_SIZE * delta_seconds) as i32 as f32
+}
+
+fn get_auto_movement_speed(transform: Transform, delta_seconds: f32, player: &mut Player) -> f32 {
+    let mut distance_to_tile = 0.0;
+    match player.movement_direction {
+        MovementDirection::UP => {
+            let signed_distance = transform.translation.y % TILE_SIZE;
+            if FloatOrd(signed_distance) >= FloatOrd(0.0) {
+                distance_to_tile = TILE_SIZE - signed_distance;
+            } else {
+                distance_to_tile = signed_distance.abs();
+            }
+        }
+        MovementDirection::DOWN => {
+            let signed_distance = transform.translation.y % TILE_SIZE;
+            if FloatOrd(signed_distance) >= FloatOrd(0.0) {
+                distance_to_tile = signed_distance;
+            } else {
+                distance_to_tile = TILE_SIZE - signed_distance.abs();
+            }
+        }
+        MovementDirection::LEFT => {
+            let signed_distance = transform.translation.x % TILE_SIZE;
+            if FloatOrd(signed_distance) >= FloatOrd(0.0) {
+                distance_to_tile = signed_distance;
+            } else {
+                distance_to_tile = TILE_SIZE - signed_distance.abs();
+            }
+        }
+        MovementDirection::RIGHT => {
+            let signed_distance = transform.translation.x % TILE_SIZE;
+            if FloatOrd(signed_distance) >= FloatOrd(0.0) {
+                distance_to_tile = TILE_SIZE - signed_distance;
+            } else {
+                distance_to_tile = signed_distance.abs();
+            }
+        }
+        MovementDirection::NEUTRAL => distance_to_tile = 0.0,
+    }
+    let delta = min(
+        FloatOrd((player.speed * TILE_SIZE * delta_seconds).abs()),
+        FloatOrd(distance_to_tile),
+    )
+    .0 as i32 as f32;
+    if approx_eq!(f32, delta, distance_to_tile) {
+        player.movement_direction = MovementDirection::NEUTRAL;
+    }
+    delta
+}
+
 fn player_movement(
     mut player_query: Query<(&mut Player, &mut Transform)>,
-    // wall_query: Query<&Transform, (With<TileCollider>, Without<Player>)>,
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
@@ -54,71 +105,37 @@ fn player_movement(
 
     let mut y_delta = 0.0;
     let mut x_delta = 0.0;
-    if keyboard.pressed(KeyCode::W) & [MovementDirection::NEUTRAL, MovementDirection::UP].contains(&player.movement_direction) {
-        y_delta += player.speed * TILE_SIZE * time.delta_seconds();
+    if keyboard.pressed(KeyCode::W)
+        & [MovementDirection::NEUTRAL, MovementDirection::UP].contains(&player.movement_direction)
+    {
+        y_delta += get_manual_movement_speed(player.speed, time.delta_seconds());
         player.movement_direction = MovementDirection::UP;
-    }
-    else if keyboard.pressed(KeyCode::S) & [MovementDirection::NEUTRAL, MovementDirection::DOWN].contains(&player.movement_direction){
-        y_delta -= player.speed * TILE_SIZE * time.delta_seconds();
+    } else if keyboard.pressed(KeyCode::S)
+        & [MovementDirection::NEUTRAL, MovementDirection::DOWN].contains(&player.movement_direction)
+    {
+        y_delta -= get_manual_movement_speed(player.speed, time.delta_seconds());
         player.movement_direction = MovementDirection::DOWN;
-    }
-    else if keyboard.pressed(KeyCode::A) & [MovementDirection::NEUTRAL, MovementDirection::LEFT].contains(&player.movement_direction){
-        x_delta -= player.speed * TILE_SIZE * time.delta_seconds();
+    } else if keyboard.pressed(KeyCode::A)
+        & [MovementDirection::NEUTRAL, MovementDirection::LEFT].contains(&player.movement_direction)
+    {
+        x_delta -= get_manual_movement_speed(player.speed, time.delta_seconds());
         player.movement_direction = MovementDirection::LEFT;
-    }
-    else if keyboard.pressed(KeyCode::D) & [MovementDirection::NEUTRAL, MovementDirection::RIGHT].contains(&player.movement_direction){
-        x_delta += player.speed * TILE_SIZE * time.delta_seconds();
+    } else if keyboard.pressed(KeyCode::D)
+        & [MovementDirection::NEUTRAL, MovementDirection::RIGHT]
+            .contains(&player.movement_direction)
+    {
+        x_delta += get_manual_movement_speed(player.speed, time.delta_seconds());
         player.movement_direction = MovementDirection::RIGHT;
+    } else if player.movement_direction == MovementDirection::UP {
+        y_delta += get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
+    } else if player.movement_direction == MovementDirection::DOWN {
+        y_delta -= get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
+    } else if player.movement_direction == MovementDirection::LEFT {
+        x_delta -= get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
+    } else if player.movement_direction == MovementDirection::RIGHT {
+        x_delta += get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
     }
-    else if player.movement_direction == MovementDirection::UP {
-        let distance_to_tile = transform.translation.y.abs() % TILE_SIZE;
-        y_delta += min(FloatOrd((player.speed * TILE_SIZE * time.delta_seconds()).abs()), FloatOrd(distance_to_tile)).0;
-        if !(5.0..=95.0).contains(&distance_to_tile) {
-            player.movement_direction = MovementDirection::NEUTRAL;
-        } 
-    }
-    else if player.movement_direction == MovementDirection::DOWN {
-        let distance_to_tile = transform.translation.y.abs() % TILE_SIZE;
-        y_delta -= min(FloatOrd((player.speed * TILE_SIZE * time.delta_seconds()).abs()), FloatOrd(distance_to_tile)).0;
-        if !(5.0..=95.0).contains(&distance_to_tile) {
-            player.movement_direction = MovementDirection::NEUTRAL;
-        } 
-    }
-    else if player.movement_direction == MovementDirection::LEFT {
-        let distance_to_tile = transform.translation.x.abs() % TILE_SIZE;
-        x_delta -= min(FloatOrd((player.speed * TILE_SIZE * time.delta_seconds()).abs()), FloatOrd(distance_to_tile)).0;
-        if !(5.0..=95.0).contains(&distance_to_tile) {
-            player.movement_direction = MovementDirection::NEUTRAL;
-        } 
-    }
-    else if player.movement_direction == MovementDirection::RIGHT {
-        let distance_to_tile = transform.translation.x.abs() % TILE_SIZE;
-        x_delta += min(FloatOrd((player.speed * TILE_SIZE * time.delta_seconds()).abs()), FloatOrd(distance_to_tile)).0;
-        if !(5.0..=95.0).contains(&distance_to_tile) {
-            player.movement_direction = MovementDirection::NEUTRAL;
-        } 
-    }
-
-    // if keyboard.just_released(KeyCode::W) & (player.movement_direction == MovementDirection::UP) {
-    //     player.movement_direction = MovementDirection::NEUTRAL;
-    // }
-    // if keyboard.just_released(KeyCode::S) & (player.movement_direction == MovementDirection::DOWN) {
-    //     player.movement_direction = MovementDirection::NEUTRAL;
-    // }
-    // if keyboard.just_released(KeyCode::A) & (player.movement_direction == MovementDirection::LEFT) {
-    //     player.movement_direction = MovementDirection::NEUTRAL;
-    // }
-    // if keyboard.just_released(KeyCode::D) & (player.movement_direction == MovementDirection::RIGHT) {
-    //     player.movement_direction = MovementDirection::NEUTRAL;
-    // }
-
-    let target = transform.translation + Vec3::new(x_delta, 0.0, 0.0);
-    transform.translation = target;
-    // if wall_collision_check(target, &wall_query) {
-    //     transform.translation = target;
-    // }
-
-    let target = transform.translation + Vec3::new(0.0, y_delta, 0.0);
+    let target = transform.translation + Vec3::new(x_delta, y_delta, 0.0);
     transform.translation = target;
     // if wall_collision_check(target, &wall_query) {
     //     transform.translation = target;
@@ -160,36 +177,109 @@ fn spawn_player(mut commands: Commands) {
             },
             Transform::from_translation(Vec3::new(0.0, 0.0, PLAYER_LEVEL)),
         ))
-        .insert(Player { speed: 3.0, movement_direction: MovementDirection::NEUTRAL });
+        .insert(Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::NEUTRAL,
+        });
 }
 
-// fn spawn_player(mut commands: Commands, ascii: Res<AsciiSheet>) {
-//     let player = spawn_ascii_sprite(
-//         &mut commands,
-//         &ascii,
-//         1,
-//         Color::rgb(0.3, 0.3, 0.9),
-//         Vec3::new(2.0 * TILE_SIZE, -2.0 * TILE_SIZE, 900.0),
-//     );
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
 
-//     commands
-//         .entity(player)
-//         .insert(Name::new("Player"))
-//         .insert(Player { speed: 3.0 })
-//         .id();
+    #[test]
+    fn test_get_manual_movement_speed() {
+        assert_eq!(get_manual_movement_speed(1.0, 1.0), TILE_SIZE);
+    }
 
-//     let background = spawn_ascii_sprite(
-//         &mut commands,
-//         &ascii,
-//         0,
-//         Color::rgb(0.5, 0.5, 0.5),
-//         Vec3::new(0.0, 0.0, -1.0),
-//     );
+    #[test]
+    fn test_get_auto_movement_speed_up() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::UP,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            6.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::UP);
+    }
 
-//     commands
-//         .entity(background)
-//         .insert(Name::new("Background"))
-//         .id(); //id() gives back the entity after creation
+    #[test]
+    fn test_get_auto_movement_speed_down() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::DOWN,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            6.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::DOWN);
+    }
 
-//     commands.entity(player).push_children(&[background]);
-// }
+    #[test]
+    fn test_get_auto_movement_speed_left() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::LEFT,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            6.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::LEFT);
+    }
+
+    #[test]
+    fn test_get_auto_movement_speed_right() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::RIGHT,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            3.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::NEUTRAL);
+    }
+
+    #[test]
+    fn test_get_auto_movement_speed_up_negative() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::UP,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, -295.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            6.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::UP);
+    }
+
+    #[test]
+    fn test_get_auto_movement_speed_down_negative() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::DOWN,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, -295.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            5.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::NEUTRAL);
+    }
+}
