@@ -98,3 +98,27 @@ fn spawn_camera(mut commands: Commands) {
 
 //     commands.entity(player).push_children(&[background]);
 // }
+
+
+// use bevy::sprite::collide_aabb::collide;
+
+// let ship_size = Vec2::new(80.0, 80.0);
+// let comet_size = Vec2::new(0.0, 0.0);
+// for comet in comets.iter() {
+//     for (ship, mut status) in ships.iter_mut() {
+//         if collide(ship.translation, ship_size, comet.translation, comet_size).is_some() {
+//             status.dead = true;
+//         }
+//     }
+// }
+
+// fn camera_follow(
+//     player_query: Query<&Transform, With<Player>>,
+//     mut camera_query: Query<&mut Transform, (Without<Player>, With<Camera>)>,
+// ) {
+//     let player_transform = player_query.single();
+//     let mut camera_transform = camera_query.single_mut();
+
+//     camera_transform.translation.x = player_transform.translation.x;
+//     camera_transform.translation.y = player_transform.translation.y;
+// }

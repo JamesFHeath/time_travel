@@ -1,12 +1,13 @@
 #![allow(clippy::redundant_field_names)]
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_prototype_lyon::prelude::*;
+use bevy::sprite::collide_aabb::collide;
 
 pub const CLEAR: Color = Color::rgb(0.1, 0.1, 0.1);
 pub const RESOLUTION: f32 = 16.0 / 9.0;
 // pub const TILE_SIZE: f32 = 0.3;
 pub const TILE_SIZE: f32 = 100.0;
-pub const BACKGROUND_ONE: f32 = 100.0;
+pub const BACKGROUND_ONE: f32 = 0.0;
 pub const PLAYER_LEVEL: f32 = 200.0;
 
 // mod ascii;
@@ -16,13 +17,16 @@ mod player;
 
 // use ascii::AsciiPlugin;
 // use debug::DebugPlugin;
-use player::PlayerPlugin;
+use player::{Player, PlayerPlugin};
 // use tilemap::TileMapPlugin;
 
 #[derive(Resource)]
 struct CurrentEra {
     current_era: Entity,
 }
+
+#[derive(Component)]
+struct Collidable();
 
 #[derive(Component)]
 struct BackgroundParent();
@@ -46,11 +50,47 @@ fn main() {
         .add_plugin(PlayerPlugin)
         .add_startup_system(spawn_camera)
         .add_startup_system(draw_backgrounds)
+        .add_startup_system(draw_collidable)
         .add_system(toggle_background)
+        .add_system(check_collision)
+        // .add_system(all_collisions)
         // .add_plugin(AsciiPlugin)
         // .add_plugin(DebugPlugin)
         // .add_plugin(TileMapPlugin)
         .run();
+}
+
+fn check_collision(
+    block_query: Query<&Transform, With<Collidable>>,
+    player_query: Query<&Transform, With<Player>>,
+) {
+    let player_transform = player_query.get_single().unwrap();
+    let block = Vec2::new(TILE_SIZE, TILE_SIZE);
+    for block_transform in block_query.iter() {
+        // println!("block found");
+        if collide(player_transform.translation, block, block_transform.translation, block).is_some() {
+            println!("COLLISION");
+        };
+
+    }
+}
+
+fn draw_collidable(mut commands: Commands) {
+    let shape = shapes::Rectangle {
+        extents: Vec2::new(TILE_SIZE, TILE_SIZE),
+        origin: RectangleOrigin::Center,
+    };
+    commands.spawn((
+        GeometryBuilder::build_as(
+            &shape,
+            DrawMode::Outlined {
+                fill_mode: FillMode::color(Color::YELLOW_GREEN),
+                outline_mode: StrokeMode::new(Color::BLACK, TILE_SIZE / 10.0),
+            },
+            Transform::from_translation(Vec3::new(5.0 * TILE_SIZE, 0.0 * TILE_SIZE, PLAYER_LEVEL)),
+        ),
+        Collidable(),
+    ));
 }
 
 fn draw_backgrounds(mut commands: Commands) {
@@ -92,7 +132,7 @@ fn draw_background_with_children(commands: &mut Commands, color: Color) -> Entit
                         Transform::from_translation(Vec3::new(
                             i as f32 * TILE_SIZE,
                             j as f32 * TILE_SIZE,
-                            0.0,
+                            BACKGROUND_ONE,
                         )),
                     ));
                 }

@@ -3,16 +3,16 @@ use std::cmp::min;
 use float_cmp::approx_eq;
 use float_ord::FloatOrd;
 
-use bevy::{prelude::*, sprite::collide_aabb::collide};
+use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{PLAYER_LEVEL, TILE_SIZE};
+use crate::{Collidable, PLAYER_LEVEL, TILE_SIZE};
 
 pub struct PlayerPlugin;
 
 #[derive(PartialEq, Debug)]
 enum MovementDirection {
-    UP,
+    Up,
     Down,
     Left,
     Right,
@@ -33,25 +33,15 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-// fn camera_follow(
-//     player_query: Query<&Transform, With<Player>>,
-//     mut camera_query: Query<&mut Transform, (Without<Player>, With<Camera>)>,
-// ) {
-//     let player_transform = player_query.single();
-//     let mut camera_transform = camera_query.single_mut();
-
-//     camera_transform.translation.x = player_transform.translation.x;
-//     camera_transform.translation.y = player_transform.translation.y;
-// }
 
 fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
     (player_speed * TILE_SIZE * delta_seconds) as i32 as f32
 }
 
 fn get_auto_movement_speed(transform: Transform, delta_seconds: f32, player: &mut Player) -> f32 {
-    let mut distance_to_tile = 0.0;
+    let distance_to_tile;
     match player.movement_direction {
-        MovementDirection::UP => {
+        MovementDirection::Up => {
             let signed_distance = transform.translation.y % TILE_SIZE;
             if FloatOrd(signed_distance) >= FloatOrd(0.0) {
                 distance_to_tile = TILE_SIZE - signed_distance;
@@ -106,10 +96,10 @@ fn player_movement(
     let mut y_delta = 0.0;
     let mut x_delta = 0.0;
     if keyboard.pressed(KeyCode::W)
-        & [MovementDirection::Neutral, MovementDirection::UP].contains(&player.movement_direction)
+        & [MovementDirection::Neutral, MovementDirection::Up].contains(&player.movement_direction)
     {
         y_delta += get_manual_movement_speed(player.speed, time.delta_seconds());
-        player.movement_direction = MovementDirection::UP;
+        player.movement_direction = MovementDirection::Up;
     } else if keyboard.pressed(KeyCode::S)
         & [MovementDirection::Neutral, MovementDirection::Down].contains(&player.movement_direction)
     {
@@ -126,7 +116,7 @@ fn player_movement(
     {
         x_delta += get_manual_movement_speed(player.speed, time.delta_seconds());
         player.movement_direction = MovementDirection::Right;
-    } else if player.movement_direction == MovementDirection::UP {
+    } else if player.movement_direction == MovementDirection::Up {
         y_delta += get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
     } else if player.movement_direction == MovementDirection::Down {
         y_delta -= get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
@@ -168,19 +158,21 @@ fn spawn_player(mut commands: Commands) {
         // ..shapes::RegularPolygon::default()
     };
 
-    commands
-        .spawn(GeometryBuilder::build_as(
+    commands.spawn((
+        GeometryBuilder::build_as(
             &shape,
             DrawMode::Outlined {
                 fill_mode: FillMode::color(Color::CYAN),
                 outline_mode: StrokeMode::new(Color::BLACK, TILE_SIZE / 10.0),
             },
             Transform::from_translation(Vec3::new(0.0, 0.0, PLAYER_LEVEL)),
-        ))
-        .insert(Player {
+        ),
+        Player {
             speed: 3.0,
             movement_direction: MovementDirection::Neutral,
-        });
+        },
+        Collidable(),
+    ));
 }
 
 #[cfg(test)]
@@ -197,7 +189,7 @@ mod tests {
     fn test_get_auto_movement_speed_up() {
         let mut player = Player {
             speed: 3.0,
-            movement_direction: MovementDirection::UP,
+            movement_direction: MovementDirection::Up,
         };
         let delta_seconds = 0.022913124;
         let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
@@ -205,7 +197,7 @@ mod tests {
             get_auto_movement_speed(transform, delta_seconds, &mut player),
             6.0
         );
-        assert_eq!(player.movement_direction, MovementDirection::UP);
+        assert_eq!(player.movement_direction, MovementDirection::Up);
     }
 
     #[test]
@@ -257,7 +249,7 @@ mod tests {
     fn test_get_auto_movement_speed_up_negative() {
         let mut player = Player {
             speed: 3.0,
-            movement_direction: MovementDirection::UP,
+            movement_direction: MovementDirection::Up,
         };
         let delta_seconds = 0.022913124;
         let transform = Transform::from_translation(Vec3::new(97.0, -295.0, 0.0));
@@ -265,7 +257,7 @@ mod tests {
             get_auto_movement_speed(transform, delta_seconds, &mut player),
             6.0
         );
-        assert_eq!(player.movement_direction, MovementDirection::UP);
+        assert_eq!(player.movement_direction, MovementDirection::Up);
     }
 
     #[test]
