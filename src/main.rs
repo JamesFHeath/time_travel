@@ -1,5 +1,6 @@
 #![allow(clippy::redundant_field_names)]
 use bevy::sprite::collide_aabb::collide;
+use bevy::utils::HashMap;
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_prototype_lyon::prelude::*;
 
@@ -24,6 +25,32 @@ struct Collidable();
 #[derive(Component)]
 struct BackgroundParent();
 
+enum Control {
+    Up,
+    Down,
+    Left,
+    Right,
+    Interact,
+}
+
+#[derive(Resource)]
+struct KeyBindings {
+    up: KeyCode,
+    down: KeyCode,
+    left: KeyCode,
+    right: KeyCode,
+}
+
+impl Default for KeyBindings {
+    fn default() -> Self {
+        Self {
+            up: KeyCode::W,
+            down: KeyCode::S,
+            left: KeyCode::A,
+            right: KeyCode::D,
+        }
+    }
+}
 
 fn main() {
     let height = 540.0;
@@ -46,6 +73,7 @@ fn main() {
         .add_startup_system(draw_backgrounds)
         .add_startup_system(draw_collidable)
         .add_system(toggle_background)
+        .init_resource::<KeyBindings>()
         .run();
 }
 
@@ -64,7 +92,6 @@ fn check_collision(
     }
     false
 }
-
 
 fn draw_collidable(mut commands: Commands) {
     let shape = shapes::Rectangle {

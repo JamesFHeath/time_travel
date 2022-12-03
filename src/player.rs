@@ -6,7 +6,7 @@ use float_ord::FloatOrd;
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{check_collision, Collidable, PLAYER_LEVEL, TILE_SIZE};
+use crate::{check_collision, Collidable, KeyBindings, PLAYER_LEVEL, TILE_SIZE};
 
 pub struct PlayerPlugin;
 
@@ -42,7 +42,7 @@ impl Plugin for PlayerPlugin {
             .add_startup_system(spawn_player_direction_indicator.after("playerspawn"))
             .add_system(camera_follow.after("movement"))
             .add_system(player_movement.label("movement"))
-            .add_system(rotate_player_direction_indicator);
+            .add_system(rotate_player_direction_indicator.after("movement"));
     }
 }
 
@@ -51,53 +51,47 @@ fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
 }
 
 fn rotate_player_direction_indicator(
-    mut pdi_query: Query<(&mut Transform, &mut FacingDirection), (With<PlayerDirectionIndicator>, Without<Player>)>,
+    mut pdi_query: Query<
+        (&mut Transform, &mut FacingDirection),
+        (With<PlayerDirectionIndicator>, Without<Player>),
+    >,
     player_query: Query<&Player, With<Player>>,
+    keyboard: Res<Input<KeyCode>>,
+    key_bindings: Res<KeyBindings>,
 ) {
     let player = player_query.single();
     let (mut pdi_transform, mut facing_direction) = pdi_query.single_mut();
-    if player.movement_direction != MovementDirection::Neutral && player.movement_direction as u8 !=  *facing_direction as u8 {
-        let rotation_angle = match player.movement_direction {
-            MovementDirection::Up => {
-                match *facing_direction {
-                    FacingDirection::Up => 0.0,
-                    FacingDirection::Down => PI,
-                    FacingDirection::Left => 3.0 * PI / 2.0,
-                    FacingDirection::Right => PI / 2.0,
-                }
+    let rotation_angle: f32;
+
+    if player.movement_direction != MovementDirection::Neutral
+        && player.movement_direction as u8 != *facing_direction as u8
+    {
+        rotation_angle = match player.movement_direction {
+            MovementDirection::Up => match *facing_direction {
+                FacingDirection::Up => 0.0,
+                FacingDirection::Down => PI,
+                FacingDirection::Left => 3.0 * PI / 2.0,
+                FacingDirection::Right => PI / 2.0,
             },
-            MovementDirection::Down => {
-                match *facing_direction {
-                    FacingDirection::Up => PI,
-                    FacingDirection::Down => 0.0,
-                    FacingDirection::Left => PI / 2.0,
-                    FacingDirection::Right => 3.0 * PI / 2.0,
-                }
+            MovementDirection::Down => match *facing_direction {
+                FacingDirection::Up => PI,
+                FacingDirection::Down => 0.0,
+                FacingDirection::Left => PI / 2.0,
+                FacingDirection::Right => 3.0 * PI / 2.0,
             },
-            MovementDirection::Left => {
-                match *facing_direction {
-                    FacingDirection::Up => PI / 2.0,
-                    FacingDirection::Down => 3.0 * PI / 2.0,
-                    FacingDirection::Left => 0.0,
-                    FacingDirection::Right => PI,
-                }
+            MovementDirection::Left => match *facing_direction {
+                FacingDirection::Up => PI / 2.0,
+                FacingDirection::Down => 3.0 * PI / 2.0,
+                FacingDirection::Left => 0.0,
+                FacingDirection::Right => PI,
             },
-            MovementDirection::Right => {
-                match *facing_direction {
-                    FacingDirection::Up => 3.0 * PI / 2.0,
-                    FacingDirection::Down => PI / 2.0,
-                    FacingDirection::Left => PI,
-                    FacingDirection::Right => 0.0,
-                }
+            MovementDirection::Right => match *facing_direction {
+                FacingDirection::Up => 3.0 * PI / 2.0,
+                FacingDirection::Down => PI / 2.0,
+                FacingDirection::Left => PI,
+                FacingDirection::Right => 0.0,
             },
-            MovementDirection::Neutral => {
-                match *facing_direction {
-                    FacingDirection::Up => 0.0,
-                    FacingDirection::Down => PI,
-                    FacingDirection::Left => 3.0 * PI / 2.0,
-                    FacingDirection::Right => PI / 2.0,
-                }
-            },
+            MovementDirection::Neutral => 0.0,
         };
         *facing_direction = match player.movement_direction {
             MovementDirection::Up => FacingDirection::Up,
@@ -106,11 +100,49 @@ fn rotate_player_direction_indicator(
             MovementDirection::Right => FacingDirection::Right,
             MovementDirection::Neutral => *facing_direction,
         };
-        pdi_transform.rotate_around(
-            Vec3::new(0.0, 0.0, 0.0),
-            Quat::from_rotation_z(rotation_angle)
-        );
+    } else if player.movement_direction == MovementDirection::Neutral {
+        if keyboard.just_pressed(key_bindings.up) {
+            rotation_angle = match *facing_direction {
+                FacingDirection::Up => 0.0,
+                FacingDirection::Down => PI,
+                FacingDirection::Left => 3.0 * PI / 2.0,
+                FacingDirection::Right => PI / 2.0,
+            };
+            *facing_direction = FacingDirection::Up;
+        } else if keyboard.just_pressed(key_bindings.down) {
+            rotation_angle = match *facing_direction {
+                FacingDirection::Up => PI,
+                FacingDirection::Down => 0.0,
+                FacingDirection::Left => PI / 2.0,
+                FacingDirection::Right => 3.0 * PI / 2.0,
+            };
+            *facing_direction = FacingDirection::Down;
+        } else if keyboard.just_pressed(key_bindings.left) {
+            rotation_angle = match *facing_direction {
+                FacingDirection::Up => PI / 2.0,
+                FacingDirection::Down => 3.0 * PI / 2.0,
+                FacingDirection::Left => 0.0,
+                FacingDirection::Right => PI,
+            };
+            *facing_direction = FacingDirection::Left;
+        } else if keyboard.just_pressed(key_bindings.right) {
+            rotation_angle = match *facing_direction {
+                FacingDirection::Up => 3.0 * PI / 2.0,
+                FacingDirection::Down => PI / 2.0,
+                FacingDirection::Left => PI,
+                FacingDirection::Right => 0.0,
+            };
+            *facing_direction = FacingDirection::Right;
+        } else {
+            rotation_angle = 0.0;
+        }
+    } else {
+        rotation_angle = 0.0;
     }
+    pdi_transform.rotate_around(
+        Vec3::new(0.0, 0.0, 0.0),
+        Quat::from_rotation_z(rotation_angle),
+    );
 }
 
 fn camera_follow(
@@ -220,27 +252,28 @@ fn player_movement(
     collidable_query: Query<(&Transform, Entity), With<Collidable>>,
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
+    key_bindings: Res<KeyBindings>,
 ) {
     let (mut player, mut transform, entity) = player_query.single_mut();
 
     let mut y_delta = 0.0;
     let mut x_delta = 0.0;
-    if keyboard.pressed(KeyCode::W)
+    if keyboard.pressed(key_bindings.up)
         & [MovementDirection::Neutral, MovementDirection::Up].contains(&player.movement_direction)
     {
         y_delta += get_manual_movement_speed(player.speed, time.delta_seconds());
         player.movement_direction = MovementDirection::Up;
-    } else if keyboard.pressed(KeyCode::S)
+    } else if keyboard.pressed(key_bindings.down)
         & [MovementDirection::Neutral, MovementDirection::Down].contains(&player.movement_direction)
     {
         y_delta -= get_manual_movement_speed(player.speed, time.delta_seconds());
         player.movement_direction = MovementDirection::Down;
-    } else if keyboard.pressed(KeyCode::A)
+    } else if keyboard.pressed(key_bindings.left)
         & [MovementDirection::Neutral, MovementDirection::Left].contains(&player.movement_direction)
     {
         x_delta -= get_manual_movement_speed(player.speed, time.delta_seconds());
         player.movement_direction = MovementDirection::Left;
-    } else if keyboard.pressed(KeyCode::D)
+    } else if keyboard.pressed(key_bindings.right)
         & [MovementDirection::Neutral, MovementDirection::Right]
             .contains(&player.movement_direction)
     {
