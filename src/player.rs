@@ -6,7 +6,7 @@ use float_ord::FloatOrd;
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{Collidable, PLAYER_LEVEL, TILE_SIZE};
+use crate::{check_collision, Collidable, PLAYER_LEVEL, TILE_SIZE};
 
 pub struct PlayerPlugin;
 
@@ -28,14 +28,63 @@ pub struct Player {
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(spawn_player)
-            // .add_system(camera_follow.after("movement"))
+            .add_system(camera_follow.after("movement"))
             .add_system(player_movement.label("movement"));
     }
 }
 
-
 fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
     (player_speed * TILE_SIZE * delta_seconds) as i32 as f32
+}
+
+fn camera_follow(
+    player_query: Query<(&Transform, &Player), With<Player>>,
+    mut camera_query: Query<&mut Transform, (Without<Player>, With<Camera>)>,
+    time: Res<Time>,
+) {
+    let (player_transform, player) = player_query.single();
+    let mut camera_transform = camera_query.single_mut();
+    let (player_x, player_y) = (
+        player_transform.translation.x,
+        player_transform.translation.y,
+    );
+
+    let delta_x = (camera_transform.translation.x - player_x).abs();
+    let delta_y = (camera_transform.translation.y - player_y).abs();
+    println!("delta_x: {}", delta_x);
+    println!("delta_y: {}", delta_y);
+
+    let mut camera_new_x: f32 = 0.0;
+    let mut camera_new_y: f32 = 0.0;
+
+    let catchup_mult: f32 = 2.0;
+
+    match player.movement_direction {
+        MovementDirection::Up => {
+            if delta_y > TILE_SIZE * 2.0 {
+                camera_new_y += get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+            }
+        }
+        MovementDirection::Down => {
+            if delta_y > TILE_SIZE * 2.0 {
+                camera_new_y -= get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+            }
+        }
+        MovementDirection::Left => {
+            if delta_x > TILE_SIZE * 2.0 {
+                camera_new_x -= get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+            }
+        }
+        MovementDirection::Right => {
+            if delta_x > TILE_SIZE * 2.0 {
+                camera_new_x += get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+            }
+        }
+        MovementDirection::Neutral => {}
+    }
+
+    camera_transform.translation.x += camera_new_x;
+    camera_transform.translation.y += camera_new_y;
 }
 
 fn get_auto_movement_speed(transform: Transform, delta_seconds: f32, player: &mut Player) -> f32 {
@@ -86,12 +135,15 @@ fn get_auto_movement_speed(transform: Transform, delta_seconds: f32, player: &mu
     delta
 }
 
+type Pte<'a, 'b> = (&'a mut Player, &'b mut Transform, Entity);
+
 fn player_movement(
-    mut player_query: Query<(&mut Player, &mut Transform)>,
+    mut player_query: Query<Pte, (With<Player>, Without<Collidable>)>,
+    collidable_query: Query<(&Transform, Entity), With<Collidable>>,
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
 ) {
-    let (mut player, mut transform) = player_query.single_mut();
+    let (mut player, mut transform, entity) = player_query.single_mut();
 
     let mut y_delta = 0.0;
     let mut x_delta = 0.0;
@@ -126,36 +178,23 @@ fn player_movement(
         x_delta += get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
     }
     let target = transform.translation + Vec3::new(x_delta, y_delta, 0.0);
-    transform.translation = target;
-    // if wall_collision_check(target, &wall_query) {
-    //     transform.translation = target;
-    // }
+    let collidable_entity: Vec<(Vec3, Entity)> = collidable_query
+        .iter()
+        .map(|(t, e)| (t.translation, e))
+        .collect();
+    if !check_collision(target, entity, collidable_entity) {
+        transform.translation = target;
+    } else {
+        player.movement_direction = MovementDirection::Neutral;
+    }
 }
 
-// fn wall_collision_check(
-//     target_player_pos: Vec3,
-//     wall_query: &Query<&Transform, (With<TileCollider>, Without<Player>)>,
-// ) -> bool {
-//     for wall_transform in wall_query.iter() {
-//         let collision = collide(
-//             target_player_pos,
-//             Vec2::splat(TILE_SIZE * 0.9),
-//             wall_transform.translation,
-//             Vec2::splat(TILE_SIZE),
-//         );
-//         if collision.is_some() {
-//             return false;
-//         }
-//     }
-//     true
-// }
+fn player_interaction() {}
 
 fn spawn_player(mut commands: Commands) {
     let shape = shapes::Circle {
         radius: TILE_SIZE / 2.0,
         center: Vec2::ZERO,
-        // feature: shapes::RegularPolygonFeature::Radius(TILE_SIZE / 2.0),
-        // ..shapes::RegularPolygon::default()
     };
 
     commands.spawn((
@@ -171,7 +210,6 @@ fn spawn_player(mut commands: Commands) {
             speed: 3.0,
             movement_direction: MovementDirection::Neutral,
         },
-        Collidable(),
     ));
 }
 

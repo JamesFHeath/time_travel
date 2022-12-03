@@ -1,24 +1,17 @@
 #![allow(clippy::redundant_field_names)]
+use bevy::sprite::collide_aabb::collide;
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_prototype_lyon::prelude::*;
-use bevy::sprite::collide_aabb::collide;
 
 pub const CLEAR: Color = Color::rgb(0.1, 0.1, 0.1);
 pub const RESOLUTION: f32 = 16.0 / 9.0;
-// pub const TILE_SIZE: f32 = 0.3;
 pub const TILE_SIZE: f32 = 100.0;
 pub const BACKGROUND_ONE: f32 = 0.0;
 pub const PLAYER_LEVEL: f32 = 200.0;
 
-// mod ascii;
-// mod debug;
 mod player;
-// mod tilemap;
 
-// use ascii::AsciiPlugin;
-// use debug::DebugPlugin;
-use player::{Player, PlayerPlugin};
-// use tilemap::TileMapPlugin;
+use player::PlayerPlugin;
 
 #[derive(Resource)]
 struct CurrentEra {
@@ -52,27 +45,23 @@ fn main() {
         .add_startup_system(draw_backgrounds)
         .add_startup_system(draw_collidable)
         .add_system(toggle_background)
-        .add_system(check_collision)
-        // .add_system(all_collisions)
-        // .add_plugin(AsciiPlugin)
-        // .add_plugin(DebugPlugin)
-        // .add_plugin(TileMapPlugin)
         .run();
 }
 
 fn check_collision(
-    block_query: Query<&Transform, With<Collidable>>,
-    player_query: Query<&Transform, With<Player>>,
-) {
-    let player_transform = player_query.get_single().unwrap();
-    let block = Vec2::new(TILE_SIZE, TILE_SIZE);
-    for block_transform in block_query.iter() {
-        // println!("block found");
-        if collide(player_transform.translation, block, block_transform.translation, block).is_some() {
-            println!("COLLISION");
+    player_translation: Vec3,
+    player_entity: Entity,
+    collidable_entity: Vec<(Vec3, Entity)>,
+) -> bool {
+    let tile = Vec2::new(TILE_SIZE, TILE_SIZE);
+    for (collidable_translation, collidable_entity) in collidable_entity.iter() {
+        if player_entity.index() != collidable_entity.index()
+            && collide(player_translation, tile, *collidable_translation, tile).is_some()
+        {
+            return true;
         };
-
     }
+    false
 }
 
 fn draw_collidable(mut commands: Commands) {
