@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::{cmp::min, f32::consts::PI};
 
 use float_cmp::approx_eq;
 use float_ord::FloatOrd;
@@ -10,14 +10,25 @@ use crate::{check_collision, Collidable, PLAYER_LEVEL, TILE_SIZE};
 
 pub struct PlayerPlugin;
 
-#[derive(PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum MovementDirection {
-    Up,
-    Down,
-    Left,
-    Right,
-    Neutral,
+    Up = 0,
+    Down = 1,
+    Left = 2,
+    Right = 3,
+    Neutral = 4,
 }
+
+#[derive(Clone, Component, Copy)]
+enum FacingDirection {
+    Up = 0,
+    Down = 1,
+    Left = 2,
+    Right = 3,
+}
+
+#[derive(Component)]
+struct PlayerDirectionIndicator();
 
 #[derive(Component)]
 pub struct Player {
@@ -27,14 +38,79 @@ pub struct Player {
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(spawn_player)
+        app.add_startup_system(spawn_player.label("playerspawn"))
+            .add_startup_system(spawn_player_direction_indicator.after("playerspawn"))
             .add_system(camera_follow.after("movement"))
-            .add_system(player_movement.label("movement"));
+            .add_system(player_movement.label("movement"))
+            .add_system(rotate_player_direction_indicator);
     }
 }
 
 fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
     (player_speed * TILE_SIZE * delta_seconds) as i32 as f32
+}
+
+fn rotate_player_direction_indicator(
+    mut pdi_query: Query<(&mut Transform, &mut FacingDirection), (With<PlayerDirectionIndicator>, Without<Player>)>,
+    player_query: Query<&Player, With<Player>>,
+) {
+    let player = player_query.single();
+    let (mut pdi_transform, mut facing_direction) = pdi_query.single_mut();
+    if player.movement_direction != MovementDirection::Neutral && player.movement_direction as u8 !=  *facing_direction as u8 {
+        let rotation_angle = match player.movement_direction {
+            MovementDirection::Up => {
+                match *facing_direction {
+                    FacingDirection::Up => 0.0,
+                    FacingDirection::Down => PI,
+                    FacingDirection::Left => 3.0 * PI / 2.0,
+                    FacingDirection::Right => PI / 2.0,
+                }
+            },
+            MovementDirection::Down => {
+                match *facing_direction {
+                    FacingDirection::Up => PI,
+                    FacingDirection::Down => 0.0,
+                    FacingDirection::Left => PI / 2.0,
+                    FacingDirection::Right => 3.0 * PI / 2.0,
+                }
+            },
+            MovementDirection::Left => {
+                match *facing_direction {
+                    FacingDirection::Up => PI / 2.0,
+                    FacingDirection::Down => 3.0 * PI / 2.0,
+                    FacingDirection::Left => 0.0,
+                    FacingDirection::Right => PI,
+                }
+            },
+            MovementDirection::Right => {
+                match *facing_direction {
+                    FacingDirection::Up => 3.0 * PI / 2.0,
+                    FacingDirection::Down => PI / 2.0,
+                    FacingDirection::Left => PI,
+                    FacingDirection::Right => 0.0,
+                }
+            },
+            MovementDirection::Neutral => {
+                match *facing_direction {
+                    FacingDirection::Up => 0.0,
+                    FacingDirection::Down => PI,
+                    FacingDirection::Left => 3.0 * PI / 2.0,
+                    FacingDirection::Right => PI / 2.0,
+                }
+            },
+        };
+        *facing_direction = match player.movement_direction {
+            MovementDirection::Up => FacingDirection::Up,
+            MovementDirection::Down => FacingDirection::Down,
+            MovementDirection::Left => FacingDirection::Left,
+            MovementDirection::Right => FacingDirection::Right,
+            MovementDirection::Neutral => *facing_direction,
+        };
+        pdi_transform.rotate_around(
+            Vec3::new(0.0, 0.0, 0.0),
+            Quat::from_rotation_z(rotation_angle)
+        );
+    }
 }
 
 fn camera_follow(
@@ -51,8 +127,6 @@ fn camera_follow(
 
     let delta_x = (camera_transform.translation.x - player_x).abs();
     let delta_y = (camera_transform.translation.y - player_y).abs();
-    println!("delta_x: {}", delta_x);
-    println!("delta_y: {}", delta_y);
 
     let mut camera_new_x: f32 = 0.0;
     let mut camera_new_y: f32 = 0.0;
@@ -62,22 +136,26 @@ fn camera_follow(
     match player.movement_direction {
         MovementDirection::Up => {
             if delta_y > TILE_SIZE * 2.0 {
-                camera_new_y += get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+                camera_new_y +=
+                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
             }
         }
         MovementDirection::Down => {
             if delta_y > TILE_SIZE * 2.0 {
-                camera_new_y -= get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+                camera_new_y -=
+                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
             }
         }
         MovementDirection::Left => {
             if delta_x > TILE_SIZE * 2.0 {
-                camera_new_x -= get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+                camera_new_x -=
+                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
             }
         }
         MovementDirection::Right => {
             if delta_x > TILE_SIZE * 2.0 {
-                camera_new_x += get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+                camera_new_x +=
+                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
             }
         }
         MovementDirection::Neutral => {}
@@ -189,7 +267,29 @@ fn player_movement(
     }
 }
 
-fn player_interaction() {}
+// fn player_interaction() {}
+
+// fn player_direction_indicator_movement() {
+// let (player_transform, player) = player_query.single();
+
+// let (player_x, player_y) = (
+//     player_transform.translation.x,
+//     player_transform.translation.y,
+// );
+
+// player_query: Query<(&Transform, &Player), With<Player>>,
+// let center: Vec2 = match player.movement_direction {
+//     MovementDirection::Up => Vec2::new(player_x, player_y),
+//     MovementDirection::Down => Vec2::new(player_x, player_y),
+//     MovementDirection::Left => Vec2::new(player_x, player_y),
+//     MovementDirection::Right => Vec2::new(player_x, player_y),
+//     MovementDirection::Neutral => Vec2::new(player_x, player_y),
+// };
+
+// Transform::from_rotation(Quat{x: 0.0, y: 0.0, z: PLAYER_LEVEL + 50.0, w: 25.0}),
+// }
+
+fn spawn_player_direction_indicator(mut commands: Commands) {}
 
 fn spawn_player(mut commands: Commands) {
     let shape = shapes::Circle {
@@ -197,20 +297,41 @@ fn spawn_player(mut commands: Commands) {
         center: Vec2::ZERO,
     };
 
-    commands.spawn((
-        GeometryBuilder::build_as(
-            &shape,
-            DrawMode::Outlined {
-                fill_mode: FillMode::color(Color::CYAN),
-                outline_mode: StrokeMode::new(Color::BLACK, TILE_SIZE / 10.0),
+    let pdi_shape = shapes::RegularPolygon {
+        sides: 3,
+        feature: shapes::RegularPolygonFeature::Radius(TILE_SIZE / 4.0),
+        ..Default::default()
+    };
+
+    commands
+        .spawn((
+            GeometryBuilder::build_as(
+                &shape,
+                DrawMode::Outlined {
+                    fill_mode: FillMode::color(Color::CYAN),
+                    outline_mode: StrokeMode::new(Color::BLACK, TILE_SIZE / 10.0),
+                },
+                Transform::from_translation(Vec3::new(0.0, 0.0, PLAYER_LEVEL)),
+            ),
+            Player {
+                speed: 3.0,
+                movement_direction: MovementDirection::Neutral,
             },
-            Transform::from_translation(Vec3::new(0.0, 0.0, PLAYER_LEVEL)),
-        ),
-        Player {
-            speed: 3.0,
-            movement_direction: MovementDirection::Neutral,
-        },
-    ));
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                GeometryBuilder::build_as(
+                    &pdi_shape,
+                    DrawMode::Outlined {
+                        fill_mode: FillMode::color(Color::OLIVE),
+                        outline_mode: StrokeMode::new(Color::BLACK, TILE_SIZE / 10.0),
+                    },
+                    Transform::from_translation(Vec3::new(0.0, TILE_SIZE / 6.0, 50.0)),
+                ),
+                FacingDirection::Up,
+                PlayerDirectionIndicator(),
+            ));
+        });
 }
 
 #[cfg(test)]

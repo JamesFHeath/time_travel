@@ -24,6 +24,7 @@ struct Collidable();
 #[derive(Component)]
 struct BackgroundParent();
 
+
 fn main() {
     let height = 540.0;
     App::new()
@@ -63,6 +64,7 @@ fn check_collision(
     }
     false
 }
+
 
 fn draw_collidable(mut commands: Commands) {
     let shape = shapes::Rectangle {
