@@ -10,6 +10,15 @@ use crate::{check_collision, Collidable, KeyBindings, PLAYER_LEVEL, TILE_SIZE};
 
 pub struct PlayerPlugin;
 
+impl Plugin for PlayerPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(spawn_player.label("playerspawn"))
+            .add_system(camera_follow.after("movement"))
+            .add_system(player_movement.label("movement"))
+            .add_system(rotate_player_direction_indicator.after("movement"));
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum MovementDirection {
     Up = 0,
@@ -39,15 +48,6 @@ struct PlayerDirectionIndicator {
 pub struct Player {
     speed: f32,
     movement_direction: MovementDirection,
-}
-
-impl Plugin for PlayerPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_startup_system(spawn_player.label("playerspawn"))
-            .add_system(camera_follow.after("movement"))
-            .add_system(player_movement.label("movement"))
-            .add_system(rotate_player_direction_indicator.after("movement"));
-    }
 }
 
 fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
