@@ -186,7 +186,7 @@ fn camera_follow(
     let mut camera_new_x: f32 = 0.0;
     let mut camera_new_y: f32 = 0.0;
 
-    let catchup_mult: f32 = 2.0;
+    let catchup_mult: f32 = 1.1;
 
     match player.movement_direction {
         MovementDirection::Up => {
