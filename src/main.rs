@@ -24,14 +24,13 @@ struct Collidable();
 #[derive(Component)]
 struct BackgroundParent();
 
-
 #[derive(Resource)]
 struct KeyBindings {
     up: KeyCode,
     down: KeyCode,
     left: KeyCode,
     right: KeyCode,
-    interact: KeyCode
+    interact: KeyCode,
 }
 
 impl Default for KeyBindings {

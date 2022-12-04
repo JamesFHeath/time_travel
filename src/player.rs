@@ -109,7 +109,7 @@ fn rotate_player_direction_indicator(
             MovementDirection::Neutral => *facing_direction,
         };
     } else if player.movement_direction == MovementDirection::Neutral {
-        if keyboard.pressed(key_bindings.up) && !pdi.lock_rotation_up{
+        if keyboard.pressed(key_bindings.up) && !pdi.lock_rotation_up {
             pdi.lock_rotation_up = true;
             rotation_angle = match *facing_direction {
                 FacingDirection::Up => 0.0,
