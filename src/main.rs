@@ -1,7 +1,6 @@
-#![allow(clippy::redundant_field_names)]
+#![allow(clippy::redundant_field_names, clippy::type_complexity)]
 use bevy::sprite::collide_aabb::collide;
-use bevy::utils::HashMap;
-use bevy::{prelude::*, render::camera::ScalingMode};
+use bevy::{prelude::*, render::camera::ScalingMode, window::close_on_esc};
 use bevy_prototype_lyon::prelude::*;
 
 pub const CLEAR: Color = Color::rgb(0.1, 0.1, 0.1);
@@ -25,13 +24,6 @@ struct Collidable();
 #[derive(Component)]
 struct BackgroundParent();
 
-enum Control {
-    Up,
-    Down,
-    Left,
-    Right,
-    Interact,
-}
 
 #[derive(Resource)]
 struct KeyBindings {
@@ -39,6 +31,7 @@ struct KeyBindings {
     down: KeyCode,
     left: KeyCode,
     right: KeyCode,
+    interact: KeyCode
 }
 
 impl Default for KeyBindings {
@@ -48,6 +41,7 @@ impl Default for KeyBindings {
             down: KeyCode::S,
             left: KeyCode::A,
             right: KeyCode::D,
+            interact: KeyCode::I,
         }
     }
 }
@@ -73,6 +67,7 @@ fn main() {
         .add_startup_system(draw_backgrounds)
         .add_startup_system(draw_collidable)
         .add_system(toggle_background)
+        .add_system(close_on_esc)
         .init_resource::<KeyBindings>()
         .run();
 }

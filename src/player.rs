@@ -28,7 +28,12 @@ enum FacingDirection {
 }
 
 #[derive(Component)]
-struct PlayerDirectionIndicator();
+struct PlayerDirectionIndicator {
+    lock_rotation_up: bool,
+    lock_rotation_down: bool,
+    lock_rotation_left: bool,
+    lock_rotation_right: bool,
+}
 
 #[derive(Component)]
 pub struct Player {
@@ -39,7 +44,6 @@ pub struct Player {
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(spawn_player.label("playerspawn"))
-            .add_startup_system(spawn_player_direction_indicator.after("playerspawn"))
             .add_system(camera_follow.after("movement"))
             .add_system(player_movement.label("movement"))
             .add_system(rotate_player_direction_indicator.after("movement"));
@@ -52,7 +56,11 @@ fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
 
 fn rotate_player_direction_indicator(
     mut pdi_query: Query<
-        (&mut Transform, &mut FacingDirection),
+        (
+            &mut Transform,
+            &mut FacingDirection,
+            &mut PlayerDirectionIndicator,
+        ),
         (With<PlayerDirectionIndicator>, Without<Player>),
     >,
     player_query: Query<&Player, With<Player>>,
@@ -60,7 +68,7 @@ fn rotate_player_direction_indicator(
     key_bindings: Res<KeyBindings>,
 ) {
     let player = player_query.single();
-    let (mut pdi_transform, mut facing_direction) = pdi_query.single_mut();
+    let (mut pdi_transform, mut facing_direction, mut pdi) = pdi_query.single_mut();
     let rotation_angle: f32;
 
     if player.movement_direction != MovementDirection::Neutral
@@ -101,7 +109,8 @@ fn rotate_player_direction_indicator(
             MovementDirection::Neutral => *facing_direction,
         };
     } else if player.movement_direction == MovementDirection::Neutral {
-        if keyboard.just_pressed(key_bindings.up) {
+        if keyboard.pressed(key_bindings.up) && !pdi.lock_rotation_up{
+            pdi.lock_rotation_up = true;
             rotation_angle = match *facing_direction {
                 FacingDirection::Up => 0.0,
                 FacingDirection::Down => PI,
@@ -109,7 +118,8 @@ fn rotate_player_direction_indicator(
                 FacingDirection::Right => PI / 2.0,
             };
             *facing_direction = FacingDirection::Up;
-        } else if keyboard.just_pressed(key_bindings.down) {
+        } else if keyboard.pressed(key_bindings.down) && !pdi.lock_rotation_down {
+            pdi.lock_rotation_down = true;
             rotation_angle = match *facing_direction {
                 FacingDirection::Up => PI,
                 FacingDirection::Down => 0.0,
@@ -117,7 +127,8 @@ fn rotate_player_direction_indicator(
                 FacingDirection::Right => 3.0 * PI / 2.0,
             };
             *facing_direction = FacingDirection::Down;
-        } else if keyboard.just_pressed(key_bindings.left) {
+        } else if keyboard.pressed(key_bindings.left) && !pdi.lock_rotation_left {
+            pdi.lock_rotation_left = true;
             rotation_angle = match *facing_direction {
                 FacingDirection::Up => PI / 2.0,
                 FacingDirection::Down => 3.0 * PI / 2.0,
@@ -125,7 +136,8 @@ fn rotate_player_direction_indicator(
                 FacingDirection::Right => PI,
             };
             *facing_direction = FacingDirection::Left;
-        } else if keyboard.just_pressed(key_bindings.right) {
+        } else if keyboard.pressed(key_bindings.right) && !pdi.lock_rotation_right {
+            pdi.lock_rotation_right = true;
             rotation_angle = match *facing_direction {
                 FacingDirection::Up => 3.0 * PI / 2.0,
                 FacingDirection::Down => PI / 2.0,
@@ -133,6 +145,17 @@ fn rotate_player_direction_indicator(
                 FacingDirection::Right => 0.0,
             };
             *facing_direction = FacingDirection::Right;
+        } else if keyboard.any_just_released([
+            key_bindings.up,
+            key_bindings.down,
+            key_bindings.left,
+            key_bindings.right,
+        ]) {
+            pdi.lock_rotation_up = false;
+            pdi.lock_rotation_down = false;
+            pdi.lock_rotation_left = false;
+            pdi.lock_rotation_right = false;
+            rotation_angle = 0.0
         } else {
             rotation_angle = 0.0;
         }
@@ -302,28 +325,6 @@ fn player_movement(
 
 // fn player_interaction() {}
 
-// fn player_direction_indicator_movement() {
-// let (player_transform, player) = player_query.single();
-
-// let (player_x, player_y) = (
-//     player_transform.translation.x,
-//     player_transform.translation.y,
-// );
-
-// player_query: Query<(&Transform, &Player), With<Player>>,
-// let center: Vec2 = match player.movement_direction {
-//     MovementDirection::Up => Vec2::new(player_x, player_y),
-//     MovementDirection::Down => Vec2::new(player_x, player_y),
-//     MovementDirection::Left => Vec2::new(player_x, player_y),
-//     MovementDirection::Right => Vec2::new(player_x, player_y),
-//     MovementDirection::Neutral => Vec2::new(player_x, player_y),
-// };
-
-// Transform::from_rotation(Quat{x: 0.0, y: 0.0, z: PLAYER_LEVEL + 50.0, w: 25.0}),
-// }
-
-fn spawn_player_direction_indicator(mut commands: Commands) {}
-
 fn spawn_player(mut commands: Commands) {
     let shape = shapes::Circle {
         radius: TILE_SIZE / 2.0,
@@ -362,7 +363,12 @@ fn spawn_player(mut commands: Commands) {
                     Transform::from_translation(Vec3::new(0.0, TILE_SIZE / 6.0, 50.0)),
                 ),
                 FacingDirection::Up,
-                PlayerDirectionIndicator(),
+                PlayerDirectionIndicator {
+                    lock_rotation_up: false,
+                    lock_rotation_down: false,
+                    lock_rotation_left: false,
+                    lock_rotation_right: false,
+                },
             ));
         });
 }
