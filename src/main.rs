@@ -11,16 +11,18 @@ pub const PLAYER_LEVEL: f32 = 200.0;
 
 mod background;
 mod camera;
+mod components;
+mod events;
 mod player;
 mod resources;
 
 use background::BackgroundPlugin;
 use camera::CameraPlugin;
+use components::Collidable;
+use events::EventPlugin;
 use player::PlayerPlugin;
 use resources::KeyBindings;
 
-#[derive(Component)]
-struct Collidable();
 
 fn main() {
     let height = 540.0;
@@ -41,6 +43,7 @@ fn main() {
         .add_plugin(CameraPlugin)
         .add_plugin(BackgroundPlugin)
         .add_plugin(PlayerPlugin)
+        .add_plugin(EventPlugin)
         .add_startup_system(draw_collidable)
         .add_system(close_on_esc)
         .init_resource::<KeyBindings>()
