@@ -13,14 +13,14 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(spawn_player.label("playerspawn"))
-            .add_system(camera_follow.after("movement"))
             .add_system(player_movement.label("movement"))
+            .add_system(camera_follow.after("movement"))
             .add_system(rotate_player_direction_indicator.after("movement"));
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum MovementDirection {
+pub enum MovementDirection {
     Up = 0,
     Down = 1,
     Left = 2,
@@ -180,58 +180,6 @@ fn rotate_player_direction_indicator(
     );
 }
 
-fn camera_follow(
-    player_query: Query<(&Transform, &Player), With<Player>>,
-    mut camera_query: Query<&mut Transform, (Without<Player>, With<Camera>)>,
-    time: Res<Time>,
-) {
-    let (player_transform, player) = player_query.single();
-    let mut camera_transform = camera_query.single_mut();
-    let (player_x, player_y) = (
-        player_transform.translation.x,
-        player_transform.translation.y,
-    );
-
-    let delta_x = (camera_transform.translation.x - player_x).abs();
-    let delta_y = (camera_transform.translation.y - player_y).abs();
-
-    let mut camera_new_x: f32 = 0.0;
-    let mut camera_new_y: f32 = 0.0;
-
-    let catchup_mult: f32 = 1.1;
-
-    match player.movement_direction {
-        MovementDirection::Up => {
-            if delta_y > TILE_SIZE * 2.0 {
-                camera_new_y +=
-                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
-            }
-        }
-        MovementDirection::Down => {
-            if delta_y > TILE_SIZE * 2.0 {
-                camera_new_y -=
-                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
-            }
-        }
-        MovementDirection::Left => {
-            if delta_x > TILE_SIZE * 2.0 {
-                camera_new_x -=
-                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
-            }
-        }
-        MovementDirection::Right => {
-            if delta_x > TILE_SIZE * 2.0 {
-                camera_new_x +=
-                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
-            }
-        }
-        MovementDirection::Neutral => {}
-    }
-
-    camera_transform.translation.x += camera_new_x;
-    camera_transform.translation.y += camera_new_y;
-}
-
 fn get_auto_movement_speed(transform: Transform, delta_seconds: f32, player: &mut Player) -> f32 {
     let distance_to_tile;
     match player.movement_direction {
@@ -335,7 +283,57 @@ fn player_movement(
     }
 }
 
-// fn player_interaction() {}
+fn camera_follow(
+    player_query: Query<(&Transform, &Player), With<Player>>,
+    mut camera_query: Query<&mut Transform, (Without<Player>, With<Camera>)>,
+    time: Res<Time>,
+) {
+    let (player_transform, player) = player_query.single();
+    let mut camera_transform = camera_query.single_mut();
+    let (player_x, player_y) = (
+        player_transform.translation.x,
+        player_transform.translation.y,
+    );
+
+    let delta_x = (camera_transform.translation.x - player_x).abs();
+    let delta_y = (camera_transform.translation.y - player_y).abs();
+
+    let mut camera_new_x: f32 = 0.0;
+    let mut camera_new_y: f32 = 0.0;
+
+    let catchup_mult: f32 = 1.1;
+
+    match player.movement_direction {
+        MovementDirection::Up => {
+            if delta_y > TILE_SIZE * 2.0 {
+                camera_new_y +=
+                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+            }
+        }
+        MovementDirection::Down => {
+            if delta_y > TILE_SIZE * 2.0 {
+                camera_new_y -=
+                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+            }
+        }
+        MovementDirection::Left => {
+            if delta_x > TILE_SIZE * 2.0 {
+                camera_new_x -=
+                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+            }
+        }
+        MovementDirection::Right => {
+            if delta_x > TILE_SIZE * 2.0 {
+                camera_new_x +=
+                    get_manual_movement_speed(player.speed * catchup_mult, time.delta_seconds());
+            }
+        }
+        MovementDirection::Neutral => {}
+    }
+
+    camera_transform.translation.x += camera_new_x;
+    camera_transform.translation.y += camera_new_y;
+}
 
 fn spawn_player(mut commands: Commands) {
     let shape = shapes::Circle {

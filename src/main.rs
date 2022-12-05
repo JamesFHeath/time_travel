@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_field_names, clippy::type_complexity)]
 use bevy::sprite::collide_aabb::collide;
-use bevy::{prelude::*, render::camera::ScalingMode, window::close_on_esc};
+use bevy::{prelude::*, window::close_on_esc};
 use bevy_prototype_lyon::prelude::*;
 
 pub const CLEAR: Color = Color::rgb(0.1, 0.1, 0.1);
@@ -10,35 +10,17 @@ pub const BACKGROUND_ONE: f32 = 0.0;
 pub const PLAYER_LEVEL: f32 = 200.0;
 
 mod background;
+mod camera;
 mod player;
 mod resources;
 
 use background::BackgroundPlugin;
+use camera::CameraPlugin;
 use player::PlayerPlugin;
+use resources::KeyBindings;
 
 #[derive(Component)]
 struct Collidable();
-
-#[derive(Resource)]
-struct KeyBindings {
-    up: KeyCode,
-    down: KeyCode,
-    left: KeyCode,
-    right: KeyCode,
-    interact: KeyCode,
-}
-
-impl Default for KeyBindings {
-    fn default() -> Self {
-        Self {
-            up: KeyCode::W,
-            down: KeyCode::S,
-            left: KeyCode::A,
-            right: KeyCode::D,
-            interact: KeyCode::I,
-        }
-    }
-}
 
 fn main() {
     let height = 540.0;
@@ -56,9 +38,9 @@ fn main() {
             ..Default::default()
         }))
         .add_plugin(ShapePlugin)
+        .add_plugin(CameraPlugin)
         .add_plugin(BackgroundPlugin)
         .add_plugin(PlayerPlugin)
-        .add_startup_system(spawn_camera)
         .add_startup_system(draw_collidable)
         .add_system(close_on_esc)
         .init_resource::<KeyBindings>()
@@ -99,20 +81,3 @@ fn draw_collidable(mut commands: Commands) {
     ));
 }
 
-fn spawn_camera(mut commands: Commands) {
-    let mut camera = Camera2dBundle::default();
-
-    // camera.projection.top = 1.0;
-    // camera.projection.bottom = -1.0;
-    camera.projection.top = TILE_SIZE * 4.5;
-    camera.projection.bottom = -TILE_SIZE * 4.5;
-
-    // camera.projection.right = 1.0 * RESOLUTION;
-    // camera.projection.left = -1.0 * RESOLUTION;
-    camera.projection.right = TILE_SIZE * 8.0;
-    camera.projection.left = -TILE_SIZE * 8.0;
-
-    camera.projection.scaling_mode = ScalingMode::None;
-
-    commands.spawn(camera);
-}
