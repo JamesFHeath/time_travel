@@ -6,7 +6,7 @@ use float_ord::FloatOrd;
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{check_collision, Collidable, KeyBindings, PLAYER_LEVEL, TILE_SIZE};
+use crate::{events::*, *};
 
 pub struct PlayerPlugin;
 
@@ -15,7 +15,8 @@ impl Plugin for PlayerPlugin {
         app.add_startup_system(spawn_player.label("playerspawn"))
             .add_system(player_movement.label("movement"))
             .add_system(camera_follow.after("movement"))
-            .add_system(rotate_player_direction_indicator.after("movement"));
+            .add_system(rotate_player_direction_indicator.after("movement"))
+            .add_system(interact);
     }
 }
 
@@ -29,7 +30,7 @@ pub enum MovementDirection {
 }
 
 #[derive(Clone, Component, Copy)]
-enum FacingDirection {
+pub enum FacingDirection {
     Up = 0,
     Down = 1,
     Left = 2,
@@ -48,6 +49,18 @@ struct PlayerDirectionIndicator {
 pub struct Player {
     speed: f32,
     movement_direction: MovementDirection,
+}
+
+fn interact(
+    player_query: Query<(&GlobalTransform, &FacingDirection), With<PlayerDirectionIndicator>>,
+    mut inter_event_writer: EventWriter<InteractionEvent>,
+    keyboard: Res<Input<KeyCode>>,
+    key_bindings: Res<KeyBindings>,
+) {
+    if keyboard.just_pressed(key_bindings.interact) {
+        let (pdi_transform, facing_direction) = player_query.single();
+        inter_event_writer.send(InteractionEvent::new(pdi_transform.translation(), *facing_direction));
+    }
 }
 
 fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
@@ -157,17 +170,6 @@ fn rotate_player_direction_indicator(
                 FacingDirection::Right => 0.0,
             };
             *facing_direction = FacingDirection::Right;
-        // } else if keyboard.any_just_released([
-        //     key_bindings.up,
-        //     key_bindings.down,
-        //     key_bindings.left,
-        //     key_bindings.right,
-        // ]) {
-        // pdi.lock_rotation_up = false;
-        // pdi.lock_rotation_down = false;
-        // pdi.lock_rotation_left = false;
-        // pdi.lock_rotation_right = false;
-        // rotation_angle = 0.0
         } else {
             rotation_angle = 0.0;
         }
