@@ -4,6 +4,8 @@ use bevy::{prelude::*, window::close_on_esc};
 use bevy_prototype_lyon::prelude::*;
 use iyes_loopless::prelude::*;
 
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
+
 pub const CLEAR: Color = Color::rgb(0.1, 0.1, 0.1);
 pub const RESOLUTION: f32 = 16.0 / 9.0;
 pub const TILE_SIZE: f32 = 100.0;
@@ -39,6 +41,8 @@ fn main() {
             },
             ..Default::default()
         }))
+        // .add_plugin(LogDiagnosticsPlugin::default())
+        // .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(ShapePlugin)
         .add_plugin(CameraPlugin)
         .add_plugin(BackgroundPlugin)
@@ -52,14 +56,14 @@ fn main() {
 }
 
 fn check_collision(
-    player_translation: Vec3,
-    player_entity: Entity,
-    collidable_entity: Vec<(Vec3, Entity)>,
+    player_translation: &Vec3,
+    player_entity: &Entity,
+    collidable_entity: &[(Vec3, Entity)],
 ) -> bool {
     let tile = Vec2::new(TILE_SIZE, TILE_SIZE);
     for (collidable_translation, collidable_entity) in collidable_entity.iter() {
         if player_entity.index() != collidable_entity.index()
-            && collide(player_translation, tile, *collidable_translation, tile).is_some()
+            && collide(*player_translation, tile, *collidable_translation, tile).is_some()
         {
             return true;
         };

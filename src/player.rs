@@ -16,6 +16,7 @@ impl Plugin for PlayerPlugin {
             .add_system(player_movement.label("movement"))
             .add_system(camera_follow.after("movement"))
             .add_system(rotate_player_direction_indicator.after("movement"))
+            .add_system(fire_projectile)
             .add_system(interact);
     }
 }
@@ -59,7 +60,10 @@ fn interact(
 ) {
     if keyboard.just_pressed(key_bindings.interact) {
         let (pdi_transform, facing_direction) = player_query.single();
-        inter_event_writer.send(InteractionEvent::new(pdi_transform.translation(), *facing_direction));
+        inter_event_writer.send(InteractionEvent::new(
+            pdi_transform.translation(),
+            *facing_direction,
+        ));
     }
 }
 
@@ -182,7 +186,41 @@ fn rotate_player_direction_indicator(
     );
 }
 
-fn get_auto_movement_speed(transform: Transform, delta_seconds: f32, player: &mut Player) -> f32 {
+fn fire_projectile(
+    mut commands: Commands,
+    mut pdi_query: Query<
+        (&mut GlobalTransform, &mut FacingDirection),
+        With<PlayerDirectionIndicator>,
+    >,
+    keyboard: Res<Input<KeyCode>>,
+    key_bindings: Res<KeyBindings>,
+) {
+    if keyboard.just_pressed(key_bindings.fire) {
+        let (pdi_transform, facing_direction) = pdi_query.single();
+        let shape = shapes::Rectangle {
+            extents: Vec2::new(TILE_SIZE / 2.0, TILE_SIZE / 10.0),
+            origin: RectangleOrigin::Center,
+        };
+
+        commands.spawn((
+            GeometryBuilder::build_as(
+                &shape,
+                DrawMode::Outlined {
+                    fill_mode: FillMode::color(Color::MAROON),
+                    outline_mode: StrokeMode::new(Color::BLACK, TILE_SIZE / 10.0),
+                },
+                Transform::from_translation(Vec3::new(
+                    pdi_transform.translation().x + TILE_SIZE,
+                    pdi_transform.translation().y + TILE_SIZE,
+                    PLAYER_LEVEL + 50.0,
+                )),
+            ),
+            FacingDirection::Down,
+        ));
+    }
+}
+
+fn get_auto_movement_speed(transform: &Transform, delta_seconds: &f32, player: &mut Player) -> f32 {
     let distance_to_tile;
     match player.movement_direction {
         MovementDirection::Up => {
@@ -265,20 +303,20 @@ fn player_movement(
         x_delta += get_manual_movement_speed(player.speed, time.delta_seconds());
         player.movement_direction = MovementDirection::Right;
     } else if player.movement_direction == MovementDirection::Up {
-        y_delta += get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
+        y_delta += get_auto_movement_speed(&transform, &time.delta_seconds(), &mut player);
     } else if player.movement_direction == MovementDirection::Down {
-        y_delta -= get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
+        y_delta -= get_auto_movement_speed(&transform, &time.delta_seconds(), &mut player);
     } else if player.movement_direction == MovementDirection::Left {
-        x_delta -= get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
+        x_delta -= get_auto_movement_speed(&transform, &time.delta_seconds(), &mut player);
     } else if player.movement_direction == MovementDirection::Right {
-        x_delta += get_auto_movement_speed(*transform, time.delta_seconds(), &mut player);
+        x_delta += get_auto_movement_speed(&transform, &time.delta_seconds(), &mut player);
     }
     let target = transform.translation + Vec3::new(x_delta, y_delta, 0.0);
     let collidable_entity: Vec<(Vec3, Entity)> = collidable_query
         .iter()
         .map(|(t, e)| (t.translation, e))
         .collect();
-    if !check_collision(target, entity, collidable_entity) {
+    if !check_collision(&target, &entity, &collidable_entity) {
         transform.translation = target;
     } else {
         player.movement_direction = MovementDirection::Neutral;
@@ -404,7 +442,7 @@ mod tests {
         let delta_seconds = 0.022913124;
         let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
         assert_eq!(
-            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
             6.0
         );
         assert_eq!(player.movement_direction, MovementDirection::Up);
@@ -419,7 +457,7 @@ mod tests {
         let delta_seconds = 0.022913124;
         let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
         assert_eq!(
-            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
             6.0
         );
         assert_eq!(player.movement_direction, MovementDirection::Down);
@@ -434,7 +472,7 @@ mod tests {
         let delta_seconds = 0.022913124;
         let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
         assert_eq!(
-            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
             6.0
         );
         assert_eq!(player.movement_direction, MovementDirection::Left);
@@ -449,7 +487,7 @@ mod tests {
         let delta_seconds = 0.022913124;
         let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
         assert_eq!(
-            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
             3.0
         );
         assert_eq!(player.movement_direction, MovementDirection::Neutral);
@@ -464,7 +502,7 @@ mod tests {
         let delta_seconds = 0.022913124;
         let transform = Transform::from_translation(Vec3::new(97.0, -295.0, 0.0));
         assert_eq!(
-            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
             6.0
         );
         assert_eq!(player.movement_direction, MovementDirection::Up);
@@ -479,7 +517,7 @@ mod tests {
         let delta_seconds = 0.022913124;
         let transform = Transform::from_translation(Vec3::new(97.0, -295.0, 0.0));
         assert_eq!(
-            get_auto_movement_speed(transform, delta_seconds, &mut player),
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
             5.0
         );
         assert_eq!(player.movement_direction, MovementDirection::Neutral);

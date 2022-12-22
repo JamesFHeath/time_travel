@@ -12,6 +12,7 @@ pub struct KeyBindings {
     pub left: KeyCode,
     pub right: KeyCode,
     pub interact: KeyCode,
+    pub fire: KeyCode,
 }
 
 impl Default for KeyBindings {
@@ -22,6 +23,7 @@ impl Default for KeyBindings {
             left: KeyCode::A,
             right: KeyCode::D,
             interact: KeyCode::I,
+            fire: KeyCode::F,
         }
     }
 }
