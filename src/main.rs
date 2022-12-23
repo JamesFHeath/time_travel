@@ -9,6 +9,8 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 pub const CLEAR: Color = Color::rgb(0.1, 0.1, 0.1);
 pub const RESOLUTION: f32 = 16.0 / 9.0;
 pub const TILE_SIZE: f32 = 100.0;
+pub const SCREEN_WIDTH: f32 = TILE_SIZE * 16.0;
+pub const SCREEN_HEIGHT: f32 = TILE_SIZE * 9.0;
 pub const BACKGROUND_ONE: f32 = 0.0;
 pub const PLAYER_LEVEL: f32 = 200.0;
 
@@ -23,7 +25,7 @@ use background::BackgroundPlugin;
 use camera::CameraPlugin;
 use components::{Collidable, Interactable};
 use events::{EventPlugin, InteractionEvent};
-use player::{FacingDirection, PlayerPlugin};
+use player::player::{FacingDirection, PlayerPlugin};
 use resources::KeyBindings;
 
 fn main() {
@@ -112,7 +114,6 @@ fn check_interaction(
 }
 
 fn some_interaction(
-    mut commands: Commands,
     query: Query<&Transform, With<Interactable>>,
     mut event: EventReader<InteractionEvent>,
 ) {
