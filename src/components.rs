@@ -1,12 +1,15 @@
 use bevy::prelude::*;
 
-use crate::player::player::FacingDirection;
+use crate::playermod::player::FacingDirection;
 
 #[derive(Component)]
 pub struct Collidable();
 
 #[derive(Component)]
 pub struct Interactable();
+
+#[derive(Component)]
+pub struct InteractedWith();
 
 #[derive(Component)]
 pub struct Projectile {

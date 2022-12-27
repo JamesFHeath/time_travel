@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::player::player::FacingDirection;
+use crate::playermod::player::FacingDirection;
 
 pub struct InteractionEvent {
     pdi_translation: Vec3,

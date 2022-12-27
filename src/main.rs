@@ -1,4 +1,6 @@
 #![allow(clippy::redundant_field_names, clippy::type_complexity)]
+use bevy::ecs::component::ComponentId;
+use bevy::ecs::query::WorldQuery;
 use bevy::sprite::collide_aabb::collide;
 use bevy::{prelude::*, window::close_on_esc};
 use bevy_prototype_lyon::prelude::*;
@@ -18,14 +20,16 @@ mod background;
 mod camera;
 mod components;
 mod events;
-mod player;
+mod playermod;
 mod resources;
 
 use background::BackgroundPlugin;
 use camera::CameraPlugin;
-use components::{Collidable, Interactable};
+use components::*;
 use events::{EventPlugin, InteractionEvent};
-use player::player::{FacingDirection, PlayerPlugin};
+use playermod::player::*;
+use playermod::skills::*;
+use playermod::*;
 use resources::KeyBindings;
 
 fn main() {
@@ -48,11 +52,11 @@ fn main() {
         .add_plugin(ShapePlugin)
         .add_plugin(CameraPlugin)
         .add_plugin(BackgroundPlugin)
-        .add_plugin(PlayerPlugin)
+        .add_plugins(PlayerModPluginGroup)
         .add_plugin(EventPlugin)
         .add_startup_system(draw_collidable)
         .add_system(close_on_esc)
-        .add_system(some_interaction.run_on_event::<InteractionEvent>())
+        .add_system(manage_interaction_events.run_on_event::<InteractionEvent>())
         .init_resource::<KeyBindings>()
         .run();
 }
@@ -77,12 +81,9 @@ fn check_interaction(
     mut pdi_translation: Vec3,
     facing_direction: FacingDirection,
     interaction_translation: Vec3,
-) {
-    // let interaction_box = Vec2::new(TILE_SIZE * 2.0, TILE_SIZE);
+) -> bool {
     let tile = Vec2::new(TILE_SIZE, TILE_SIZE);
     let scaled_tile_size = TILE_SIZE * 0.5;
-    // println!("PDI: {}", pdi_translation);
-    // println!("BOX: {}", interaction_translation);
     let interaction_box = match facing_direction {
         FacingDirection::Up => {
             pdi_translation.y += scaled_tile_size;
@@ -101,29 +102,31 @@ fn check_interaction(
             Vec2::new(scaled_tile_size, scaled_tile_size)
         }
     };
-    if collide(
+    collide(
         pdi_translation,
         interaction_box,
         interaction_translation,
         tile,
     )
     .is_some()
-    {
-        println!("INTERACTION HIT");
-    }
 }
 
-fn some_interaction(
-    query: Query<&Transform, With<Interactable>>,
+fn manage_interaction_events(
+    mut commands: Commands,
+    query: Query<(&Transform, Entity), With<Interactable>>,
     mut event: EventReader<InteractionEvent>,
 ) {
     for interaction_event in event.iter() {
-        for transform in query.iter() {
-            check_interaction(
+        for (transform, entity) in query.iter() {
+            let is_interacted = check_interaction(
                 interaction_event.pdi_translation(),
                 interaction_event.facing_direction(),
                 transform.translation,
             );
+            if is_interacted {
+                commands.entity(entity).insert(InteractedWith());
+                println!("INTERACTION HIT");
+            }
         }
     }
 }

@@ -23,7 +23,7 @@ impl Default for KeyBindings {
             left: KeyCode::A,
             right: KeyCode::D,
             interact: KeyCode::I,
-            fire: KeyCode::F,
+            fire: KeyCode::J,
         }
     }
 }
