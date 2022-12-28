@@ -131,6 +131,9 @@ fn manage_interaction_events(
     }
 }
 
+#[derive(Component)]
+struct CollidableTimer(Timer);
+
 fn draw_collidable(mut commands: Commands) {
     let shape = shapes::Rectangle {
         extents: Vec2::new(TILE_SIZE, TILE_SIZE),
@@ -147,5 +150,6 @@ fn draw_collidable(mut commands: Commands) {
         ),
         Collidable(),
         Interactable(),
+        CollidableTimer(Timer::from_seconds(1.0, TimerMode::Once)),
     ));
 }

@@ -66,7 +66,7 @@ fn interact(
     }
 }
 
-fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
+pub fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
     (player_speed * TILE_SIZE * delta_seconds) as i32 as f32
 }
 
