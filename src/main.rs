@@ -16,7 +16,7 @@ pub const PLAYER_LEVEL: f32 = 200.0;
 
 mod background;
 mod camera;
-mod components;
+mod collisionsmod;
 mod events;
 mod playermod;
 mod resources;
@@ -24,7 +24,9 @@ mod systemsmod;
 
 use background::BackgroundPlugin;
 use camera::CameraPlugin;
-use components::*;
+use collisionsmod::*;
+use collisionsmod::collisions::*;
+use collisionsmod::components::*;
 use events::{EventPlugin, InteractionEvent};
 use playermod::player::*;
 use playermod::skills::*;

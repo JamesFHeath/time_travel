@@ -3,9 +3,6 @@ use std::{cmp::min, f32::consts::PI};
 use float_cmp::approx_eq;
 use float_ord::FloatOrd;
 
-use bevy::prelude::*;
-use bevy_prototype_lyon::prelude::*;
-
 use crate::*;
 
 pub struct PlayerPlugin;
