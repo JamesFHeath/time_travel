@@ -1,6 +1,4 @@
 #![allow(clippy::redundant_field_names, clippy::type_complexity)]
-use bevy::ecs::component::ComponentId;
-use bevy::ecs::query::WorldQuery;
 use bevy::sprite::collide_aabb::collide;
 use bevy::{prelude::*, window::close_on_esc};
 use bevy_prototype_lyon::prelude::*;
@@ -22,6 +20,7 @@ mod components;
 mod events;
 mod playermod;
 mod resources;
+mod systemsmod;
 
 use background::BackgroundPlugin;
 use camera::CameraPlugin;
@@ -31,6 +30,7 @@ use playermod::player::*;
 use playermod::skills::*;
 use playermod::*;
 use resources::KeyBindings;
+use systemsmod::general_systems::*;
 
 fn main() {
     let height = 540.0;

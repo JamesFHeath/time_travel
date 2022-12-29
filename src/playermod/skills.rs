@@ -17,6 +17,7 @@ impl Plugin for SkillPlugin {
 }
 
 const PROJECTILE_COOLDOWN: f32 = 0.5;
+const PROJECTILE_SPEED: f32 = 6.0;
 
 #[derive(Component)]
 pub struct Projectile {
@@ -50,9 +51,6 @@ impl Projectile {
     }
 }
 
-fn out_of_bounds(camera_x: f32, camera_y: f32, entity_x: f32, entity_y: f32) -> bool {
-    (entity_x.abs() - camera_x.abs() > SCREEN_WIDTH / 1.9) || (entity_y.abs() - camera_y.abs() > SCREEN_HEIGHT / 1.9)
-}
 fn despawn_offscreen_projectiles(
     mut commands: Commands,
     mut projectile_query: Query<(&Transform, Entity), With<Projectile>>,
@@ -62,7 +60,12 @@ fn despawn_offscreen_projectiles(
     let camera_x = camera_transform.translation.x;
     let camera_y = camera_transform.translation.y;
     for (projectile_transform, projectile) in projectile_query.iter_mut() {
-        if out_of_bounds(camera_x, camera_y, projectile_transform.translation.x, projectile_transform.translation.y) {
+        if out_of_bounds(
+            camera_x,
+            camera_y,
+            projectile_transform.translation.x,
+            projectile_transform.translation.y,
+        ) {
             commands.entity(projectile).despawn();
         }
     }
@@ -146,7 +149,7 @@ fn fire_projectile(
                     PLAYER_LEVEL + 50.0,
                 )),
             ),
-            Projectile::new(*facing_direction, 6.0),
+            Projectile::new(*facing_direction, PROJECTILE_SPEED),
         ));
         projectile_cooldown.reset();
     }
