@@ -1,5 +1,12 @@
 use crate::*;
 
+pub struct GeneralSystemsPlugin;
+
+impl Plugin for GeneralSystemsPlugin {
+    fn build(&self, app: &mut App) {
+    }
+}
+
 pub fn out_of_bounds(camera_x: f32, camera_y: f32, entity_x: f32, entity_y: f32) -> bool {
     ((entity_x.abs() - camera_x.abs()).abs() > SCREEN_WIDTH / 1.9)
         || ((entity_y.abs() - camera_y.abs()).abs() > SCREEN_HEIGHT / 1.9)

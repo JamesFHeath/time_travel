@@ -31,6 +31,7 @@ use playermod::skills::*;
 use playermod::*;
 use resources::KeyBindings;
 use systemsmod::general_systems::*;
+use systemsmod::*;
 
 fn main() {
     let height = 540.0;
@@ -53,6 +54,7 @@ fn main() {
         .add_plugin(CameraPlugin)
         .add_plugin(BackgroundPlugin)
         .add_plugins(PlayerModPluginGroup)
+        .add_plugins(SystemsModPluginGroup)
         .add_plugin(EventPlugin)
         .add_startup_system(draw_collidable)
         .add_system(close_on_esc)

@@ -1,8 +1,8 @@
-pub mod player;
-pub mod skills;
-
 use crate::*;
 use bevy::app::PluginGroupBuilder;
+
+pub mod player;
+pub mod skills;
 
 pub struct PlayerModPluginGroup;
 
