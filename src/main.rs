@@ -1,4 +1,5 @@
 #![allow(clippy::redundant_field_names, clippy::type_complexity)]
+#![allow(unused_imports)]
 use bevy::sprite::collide_aabb::collide;
 use bevy::{prelude::*, window::close_on_esc};
 use bevy_prototype_lyon::prelude::*;

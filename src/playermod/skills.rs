@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use core::time::Duration;
-use iyes_loopless::prelude::*;
 
 use crate::*;
 

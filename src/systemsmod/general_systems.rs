@@ -3,7 +3,7 @@ use crate::*;
 pub struct GeneralSystemsPlugin;
 
 impl Plugin for GeneralSystemsPlugin {
-    fn build(&self, app: &mut App) {
+    fn build(&self, _app: &mut App) {
     }
 }
 
