@@ -100,17 +100,28 @@ fn draw_collidable(mut commands: Commands) {
         extents: Vec2::new(TILE_SIZE, TILE_SIZE),
         origin: RectangleOrigin::Center,
     };
-    commands.spawn((
-        GeometryBuilder::build_as(
-            &shape,
-            DrawMode::Outlined {
-                fill_mode: FillMode::color(Color::YELLOW_GREEN),
-                outline_mode: StrokeMode::new(Color::BLACK, TILE_SIZE / 10.0),
-            },
-            Transform::from_translation(Vec3::new(5.0 * TILE_SIZE, 0.0 * TILE_SIZE, PLAYER_LEVEL)),
-        ),
-        Collidable(),
-        Interactable(),
-        CollidableTimer(Timer::from_seconds(1.0, TimerMode::Once)),
-    ));
+    let locations = vec![
+        Vec2::new(5.0 * TILE_SIZE, 0.0 * TILE_SIZE),
+        Vec2::new(6.0 * TILE_SIZE, 0.0 * TILE_SIZE),
+        Vec2::new(0.0 * TILE_SIZE, 4.0 * TILE_SIZE),
+    ];
+    for location in locations {
+        commands.spawn((
+            GeometryBuilder::build_as(
+                &shape,
+                DrawMode::Outlined {
+                    fill_mode: FillMode::color(Color::YELLOW_GREEN),
+                    outline_mode: StrokeMode::new(Color::BLACK, TILE_SIZE / 10.0),
+                },
+                Transform::from_translation(Vec3::new(
+                    location.x,
+                    location.y,
+                    PLAYER_LEVEL,
+                )),
+            ),
+            Collidable(),
+            Interactable(),
+            CollidableTimer(Timer::from_seconds(1.0, TimerMode::Once)),
+        ));
+    }
 }

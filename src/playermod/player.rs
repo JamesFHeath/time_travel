@@ -87,6 +87,10 @@ fn rotate_player_direction_indicator(
     if player.movement_direction != MovementDirection::Neutral
         && player.movement_direction as u8 != *facing_direction as u8
     {
+        pdi.lock_rotation_up = false;
+        pdi.lock_rotation_down = false;
+        pdi.lock_rotation_left = false;
+        pdi.lock_rotation_right = false;
         rotation_angle = match player.movement_direction {
             MovementDirection::Up => match *facing_direction {
                 FacingDirection::Up => 0.0,
@@ -135,8 +139,8 @@ fn rotate_player_direction_indicator(
             };
             *facing_direction = FacingDirection::Up;
         } else if keyboard.pressed(key_bindings.down) && !pdi.lock_rotation_down {
-            pdi.lock_rotation_down = true;
             pdi.lock_rotation_up = false;
+            pdi.lock_rotation_down = true;
             pdi.lock_rotation_left = false;
             pdi.lock_rotation_right = false;
             rotation_angle = match *facing_direction {
@@ -147,9 +151,9 @@ fn rotate_player_direction_indicator(
             };
             *facing_direction = FacingDirection::Down;
         } else if keyboard.pressed(key_bindings.left) && !pdi.lock_rotation_left {
-            pdi.lock_rotation_left = true;
             pdi.lock_rotation_up = false;
             pdi.lock_rotation_down = false;
+            pdi.lock_rotation_left = true;
             pdi.lock_rotation_right = false;
             rotation_angle = match *facing_direction {
                 FacingDirection::Up => PI / 2.0,
@@ -159,10 +163,10 @@ fn rotate_player_direction_indicator(
             };
             *facing_direction = FacingDirection::Left;
         } else if keyboard.pressed(key_bindings.right) && !pdi.lock_rotation_right {
-            pdi.lock_rotation_right = true;
             pdi.lock_rotation_up = false;
             pdi.lock_rotation_down = false;
             pdi.lock_rotation_left = false;
+            pdi.lock_rotation_right = true;
             rotation_angle = match *facing_direction {
                 FacingDirection::Up => 3.0 * PI / 2.0,
                 FacingDirection::Down => PI / 2.0,
