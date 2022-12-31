@@ -9,15 +9,24 @@ impl Plugin for CollisionsPlugin {
     }
 }
 
+/// Checks collisions between the player or another
+/// moving entity and all collidable entities.
 pub fn check_collision(
-    player_translation: &Vec3,
-    player_entity: &Entity,
-    collidable_entity: &[(Vec3, Entity)],
+    mover_translation: &Vec3,
+    mover_index: &u32,
+    collidables: &[(Vec3, u32)],
+    mover_size: Vec2,
 ) -> bool {
     let tile = Vec2::new(TILE_SIZE, TILE_SIZE);
-    for (collidable_translation, collidable_entity) in collidable_entity.iter() {
-        if player_entity.index() != collidable_entity.index()
-            && collide(*player_translation, tile, *collidable_translation, tile).is_some()
+    for (collidable_translation, collidable_index) in collidables.iter() {
+        if mover_index != collidable_index
+            && collide(
+                *mover_translation,
+                mover_size,
+                *collidable_translation,
+                tile,
+            )
+            .is_some()
         {
             return true;
         };
@@ -25,6 +34,8 @@ pub fn check_collision(
     false
 }
 
+/// Checks if the player was in range and facing
+/// the correct direction to interact with an entity.
 fn check_interaction(
     mut pdi_translation: Vec3,
     facing_direction: FacingDirection,
@@ -59,6 +70,8 @@ fn check_interaction(
     .is_some()
 }
 
+/// This system checks interaction events between
+/// the player and interactable entities.
 fn manage_interaction_events(
     mut commands: Commands,
     query: Query<(&Transform, Entity), With<Interactable>>,

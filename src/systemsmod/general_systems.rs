@@ -3,8 +3,7 @@ use crate::*;
 pub struct GeneralSystemsPlugin;
 
 impl Plugin for GeneralSystemsPlugin {
-    fn build(&self, _app: &mut App) {
-    }
+    fn build(&self, _app: &mut App) {}
 }
 
 pub fn out_of_bounds(camera_x: f32, camera_y: f32, entity_x: f32, entity_y: f32) -> bool {

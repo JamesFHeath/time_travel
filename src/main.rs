@@ -30,7 +30,7 @@ use collisionsmod::components::*;
 use collisionsmod::*;
 use events::{EventPlugin, InteractionEvent};
 use playermod::player::*;
-use playermod::skills::*;
+use playermod::arrows::*;
 use playermod::*;
 use resources::KeyBindings;
 use systemsmod::general_systems::*;

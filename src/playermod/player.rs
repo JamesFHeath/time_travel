@@ -274,11 +274,11 @@ fn player_movement(
         x_delta += get_auto_movement_speed(&transform, &time.delta_seconds(), &mut player);
     }
     let target = transform.translation + Vec3::new(x_delta, y_delta, 0.0);
-    let collidable_entity: Vec<(Vec3, Entity)> = collidable_query
+    let collidable_entity: Vec<(Vec3, u32)> = collidable_query
         .iter()
-        .map(|(t, e)| (t.translation, e))
+        .map(|(t, e)| (t.translation, e.index()))
         .collect();
-    if !check_collision(&target, &entity, &collidable_entity) {
+    if !check_collision(&target, &entity.index(), &collidable_entity, Vec2::new(TILE_SIZE, TILE_SIZE)) {
         transform.translation = target;
     } else {
         player.movement_direction = MovementDirection::Neutral;
