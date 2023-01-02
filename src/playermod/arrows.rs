@@ -17,7 +17,7 @@ impl Plugin for ArrowsPlugin {
 }
 
 const ARROW_COOLDOWN: f32 = 0.5;
-const ARROW_SPEED: f32 = 6.0;
+const ARROW_SPEED: f32 = 7.5;
 const ARROW_LENGTH: f32 = TILE_SIZE / 2.0;
 const ARROW_WIDTH: f32 = TILE_SIZE / 10.0;
 

@@ -17,6 +17,8 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+const PLAYER_SPEED: f32 = 4.0;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MovementDirection {
     Up = 0,
@@ -364,7 +366,7 @@ fn spawn_player(mut commands: Commands) {
                 Transform::from_translation(Vec3::new(0.0, 0.0, PLAYER_LEVEL)),
             ),
             Player {
-                speed: 3.0,
+                speed: PLAYER_SPEED,
                 movement_direction: MovementDirection::Neutral,
             },
         ))
