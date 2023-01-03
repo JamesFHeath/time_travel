@@ -28,15 +28,6 @@ pub struct Arrow {
     pub size: Vec2,
 }
 
-#[derive(Resource, Deref, DerefMut)]
-struct ArrowCooldown(Timer);
-
-impl Default for ArrowCooldown {
-    fn default() -> Self {
-        Self(Timer::from_seconds(ARROW_COOLDOWN, TimerMode::Once))
-    }
-}
-
 impl Arrow {
     pub fn new(facing_direction: FacingDirection, speed: f32, size: Vec2) -> Self {
         Self {
@@ -54,6 +45,16 @@ impl Arrow {
         self.speed
     }
 }
+
+#[derive(Resource, Deref, DerefMut)]
+struct ArrowCooldown(Timer);
+
+impl Default for ArrowCooldown {
+    fn default() -> Self {
+        Self(Timer::from_seconds(ARROW_COOLDOWN, TimerMode::Once))
+    }
+}
+
 
 fn manage_arrow_collisions(
     mut commands: Commands,

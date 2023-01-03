@@ -3,6 +3,7 @@ use bevy::app::PluginGroupBuilder;
 
 pub mod player;
 pub mod arrows;
+pub mod hookshot;
 
 pub struct PlayerModPluginGroup;
 
@@ -11,5 +12,6 @@ impl PluginGroup for PlayerModPluginGroup {
         PluginGroupBuilder::start::<Self>()
             .add(PlayerPlugin)
             .add(ArrowsPlugin)
+            .add(HookshotPlugin)
     }
 }
