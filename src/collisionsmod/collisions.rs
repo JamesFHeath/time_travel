@@ -121,6 +121,7 @@ fn draw_collidable(mut commands: Commands) {
             ),
             Collidable(),
             Interactable(),
+            Hookshotable(),
             CollidableTimer(Timer::from_seconds(1.0, TimerMode::Once)),
         ));
     }
