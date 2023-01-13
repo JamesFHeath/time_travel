@@ -10,15 +10,18 @@ impl Plugin for HookshotPlugin {
         app.add_system(fire_hookshot.label("firehookshot"))
             .add_system(hookshot_move.label("hookshotmove"))
             .add_system(manage_hookshot_collisions.after("hookshotmove"))
-            .add_system(despawn_hookshot_out_of_range.after("hookshotmove"));
+            .add_system(despawn_hookshot_out_of_range.after("hookshotmove"))
+            .insert_resource(HookshotFiring(false));
     }
 }
 
-#[derive(Component)]
-pub struct HookshotFired();
+#[derive(Default, Resource)]
+pub struct HookshotFiring(pub bool);
 
 #[derive(Component)]
-pub struct HookshotHitBlock();
+pub struct HookshotHitBlock{
+    pub block_translation: Vec3,
+}
 
 #[derive(Component)]
 pub struct Hookshotable();
@@ -53,19 +56,19 @@ impl Hookshot {
 
 fn despawn_hookshot_out_of_range(
     mut commands: Commands,
-    mut player_query: Query<(&Transform, Entity), (With<HookshotFired>, With<Player>)>,
-    mut hookshot_query: Query<(&Transform, Entity), (With<Hookshot>, Without<Player>)>,
+    mut player_query: Query<&Transform, With<Player>>,
+    mut hookshot_firing: ResMut<HookshotFiring>,
+    hookshot_query: Query<(&Transform, Entity), (With<Hookshot>, Without<Player>)>,
 ) {
-    for (player_transform, player_entity) in player_query.iter_mut() {
+    for player_transform in player_query.iter_mut() {
         for (hookshot_transform, hookshot_entity) in hookshot_query.iter() {
             if (player_transform.translation.x - hookshot_transform.translation.x).abs()
                 > TILE_SIZE * 3.4
                 || (player_transform.translation.y - hookshot_transform.translation.y).abs()
                     > TILE_SIZE * 3.4
             {
-                println!("out of range");
                 commands.entity(hookshot_entity).despawn();
-                commands.entity(player_entity).remove::<HookshotFired>();
+                hookshot_firing.0 = false;
             }
         }
     }
@@ -74,15 +77,12 @@ fn despawn_hookshot_out_of_range(
 fn fire_hookshot(
     mut commands: Commands,
     pdi_query: Query<(&mut GlobalTransform, &mut FacingDirection), With<PlayerDirectionIndicator>>,
-    player_query: Query<Entity, (With<HookshotFired>, With<Player>)>,
-    player_hookshot_query: Query<Entity, (Without<HookshotFired>, With<Player>)>,
+    mut hookshot_firing: ResMut<HookshotFiring>,
     keyboard: Res<Input<KeyCode>>,
     key_bindings: Res<KeyBindings>,
 ) {
-    if keyboard.just_pressed(key_bindings.hookshot) && player_query.is_empty() {
-        commands
-            .entity(player_hookshot_query.single())
-            .insert(HookshotFired());
+    if keyboard.just_pressed(key_bindings.hookshot) && !hookshot_firing.0 {
+        hookshot_firing.0 = true;
         let (pdi_transform, facing_direction) = pdi_query.single();
 
         let (hookshot_x, hookshot_y, roation_angle) = match facing_direction {
@@ -122,7 +122,7 @@ fn fire_hookshot(
                     outline_mode: StrokeMode::new(Color::BLACK, TILE_SIZE / 10.0),
                 },
                 Transform {
-                    translation: Vec3::new(hookshot_x, hookshot_y, PLAYER_LEVEL),
+                    translation: Vec3::new(hookshot_x, hookshot_y, PLAYER_LEVEL - 25.0),
                     rotation: Quat::from_rotation_z(roation_angle),
                     ..Default::default()
                 },
@@ -161,13 +161,15 @@ fn manage_hookshot_collisions(
         .map(|(transform, entity)| (transform.translation, entity.index()))
         .collect();
     for (hookshot_transform, hookshot_entity, hookshot) in hookshot_query.iter_mut() {
-        if check_collision(
+        if let Some(collidable_translation) = check_collision(
             &hookshot_transform.translation,
             &hookshot_entity.index(),
             &collidables,
             Vec2::new(hookshot.size, hookshot.size),
         ) {
-            commands.entity(hookshot_entity).insert(HookshotHitBlock());
+            if let Some(mut hookshot_entity) = commands.get_entity(hookshot_entity) {
+                hookshot_entity.insert(HookshotHitBlock{block_translation: collidable_translation});
+            }
             return;
         }
     }

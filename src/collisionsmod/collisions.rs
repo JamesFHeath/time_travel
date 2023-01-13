@@ -16,7 +16,7 @@ pub fn check_collision(
     mover_index: &u32,
     collidables: &[(Vec3, u32)],
     mover_size: Vec2,
-) -> bool {
+) -> Option<Vec3> {
     let tile = Vec2::new(TILE_SIZE, TILE_SIZE);
     for (collidable_translation, collidable_index) in collidables.iter() {
         if mover_index != collidable_index
@@ -28,10 +28,10 @@ pub fn check_collision(
             )
             .is_some()
         {
-            return true;
+            return Some(*collidable_translation);
         };
     }
-    false
+    None
 }
 
 /// Checks if the player was in range and facing

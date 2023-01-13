@@ -71,7 +71,7 @@ fn manage_arrow_collisions(
             &arrow_entity.index(),
             &collidables,
             arrow.size,
-        ) {
+        ).is_some() {
             commands.entity(arrow_entity).despawn();
         }
     }

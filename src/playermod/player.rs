@@ -244,7 +244,11 @@ fn player_movement(
     keyboard: Res<Input<KeyCode>>,
     time: Res<Time>,
     key_bindings: Res<KeyBindings>,
+    hookshot_firing: Res<HookshotFiring>,
 ) {
+    if hookshot_firing.0 {
+        return;
+    }
     let (mut player, mut transform, entity) = player_query.single_mut();
 
     let mut y_delta = 0.0;
@@ -284,7 +288,14 @@ fn player_movement(
         .iter()
         .map(|(t, e)| (t.translation, e.index()))
         .collect();
-    if !check_collision(&target, &entity.index(), &collidable_entity, Vec2::new(TILE_SIZE, TILE_SIZE)) {
+    if check_collision(
+        &target,
+        &entity.index(),
+        &collidable_entity,
+        Vec2::new(TILE_SIZE, TILE_SIZE),
+    )
+    .is_none()
+    {
         transform.translation = target;
     } else {
         player.movement_direction = MovementDirection::Neutral;
