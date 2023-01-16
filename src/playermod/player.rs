@@ -219,8 +219,8 @@ mod test_get_new_angle_and_facing_direction_for_pdi {
     fn test_player_moving_neutral_up_pressed_pdi_facing_up() {
         let player_movement_direction = MovementDirection::Neutral;
         let pdi_facing_direction = FacingDirection::Up;
-        let key_pressed = KeyCode::Up;
         let key_bindings = KeyBindings::default();
+        let key_pressed = key_bindings.up;
         let (new_rotation_angle, new_facing_direction) = get_new_angle_and_facing_direction_for_pdi(
             player_movement_direction,
             pdi_facing_direction,
@@ -229,6 +229,70 @@ mod test_get_new_angle_and_facing_direction_for_pdi {
         );
         assert_eq!(new_rotation_angle, ZERO_PI);
         assert_eq!(new_facing_direction, FacingDirection::Up);
+    }
+
+    #[test]
+    fn test_player_moving_neutral_up_pressed_pdi_facing_down() {
+        let player_movement_direction = MovementDirection::Neutral;
+        let pdi_facing_direction = FacingDirection::Down;
+        let key_bindings = KeyBindings::default();
+        let key_pressed = key_bindings.up;
+        let (new_rotation_angle, new_facing_direction) = get_new_angle_and_facing_direction_for_pdi(
+            player_movement_direction,
+            pdi_facing_direction,
+            key_pressed,
+            &key_bindings,
+        );
+        assert_eq!(new_rotation_angle, Rotation(PI));
+        assert_eq!(new_facing_direction, FacingDirection::Up);
+    }
+
+    #[test]
+    fn test_player_moving_left_left_pressed_pdi_facing_down() {
+        let player_movement_direction = MovementDirection::Left;
+        let pdi_facing_direction = FacingDirection::Down;
+        let key_bindings = KeyBindings::default();
+        let key_pressed = key_bindings.left;
+        let (new_rotation_angle, new_facing_direction) = get_new_angle_and_facing_direction_for_pdi(
+            player_movement_direction,
+            pdi_facing_direction,
+            key_pressed,
+            &key_bindings,
+        );
+        assert_eq!(new_rotation_angle, THREE_PI_OVER_TWO);
+        assert_eq!(new_facing_direction, FacingDirection::Left);
+    }
+
+    #[test]
+    fn test_player_moving_left_up_pressed_pdi_facing_down() {
+        let player_movement_direction = MovementDirection::Left;
+        let pdi_facing_direction = FacingDirection::Down;
+        let key_bindings = KeyBindings::default();
+        let key_pressed = key_bindings.up;
+        let (new_rotation_angle, new_facing_direction) = get_new_angle_and_facing_direction_for_pdi(
+            player_movement_direction,
+            pdi_facing_direction,
+            key_pressed,
+            &key_bindings,
+        );
+        assert_eq!(new_rotation_angle, THREE_PI_OVER_TWO);
+        assert_eq!(new_facing_direction, FacingDirection::Left);
+    }
+
+    #[test]
+    fn test_player_moving_left_up_pressed_pdi_facing_left() {
+        let player_movement_direction = MovementDirection::Left;
+        let pdi_facing_direction = FacingDirection::Left;
+        let key_bindings = KeyBindings::default();
+        let key_pressed = key_bindings.up;
+        let (new_rotation_angle, new_facing_direction) = get_new_angle_and_facing_direction_for_pdi(
+            player_movement_direction,
+            pdi_facing_direction,
+            key_pressed,
+            &key_bindings,
+        );
+        assert_eq!(new_rotation_angle, ZERO_PI);
+        assert_eq!(new_facing_direction, FacingDirection::Left);
     }
 }
 
