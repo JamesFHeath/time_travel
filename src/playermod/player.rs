@@ -17,7 +17,11 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+struct Rotation(f32);
 const PLAYER_SPEED: f32 = 4.0;
+const PI_OVER_TWO: Rotation = Rotation(PI / 2.0);
+const THREE_PI_OVER_TWO: Rotation = Rotation(3.0 * PI / 2.0);
+const ZERO_PI: Rotation = Rotation(0.0);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MovementDirection {
@@ -69,6 +73,16 @@ pub fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
     (player_speed * TILE_SIZE * delta_seconds) as i32 as f32
 }
 
+#[cfg(test)]
+mod test_get_manual_movement_speed {
+    use super::*;
+
+    #[test]
+    fn test_get_manual_movement_speed() {
+        assert_eq!(get_manual_movement_speed(1.0, 1.0), TILE_SIZE);
+    }
+}
+
 fn rotate_player_direction_indicator(
     mut pdi_query: Query<
         (
@@ -84,108 +98,154 @@ fn rotate_player_direction_indicator(
 ) {
     let player = player_query.single();
     let (mut pdi_transform, mut facing_direction, mut pdi) = pdi_query.single_mut();
-    let rotation_angle: f32;
 
-    if player.movement_direction != MovementDirection::Neutral
-        && player.movement_direction as u8 != *facing_direction as u8
+    pdi.lock_rotation_up = false;
+    pdi.lock_rotation_down = false;
+    pdi.lock_rotation_left = false;
+    pdi.lock_rotation_right = false;
+
+    let key_pressed: KeyCode;
+
+    if keyboard.pressed(key_bindings.up) {
+        key_pressed = key_bindings.up;
+    } else if keyboard.pressed(key_bindings.down) {
+        key_pressed = key_bindings.down;
+    } else if keyboard.pressed(key_bindings.left) {
+        key_pressed = key_bindings.left;
+    } else if keyboard.pressed(key_bindings.right) {
+        key_pressed = key_bindings.right;
+    } else {
+        return;
+    }
+
+    let (rotation_angle, new_facing_direction) = get_new_angle_and_facing_direction_for_pdi(
+        player.movement_direction,
+        *facing_direction,
+        key_pressed,
+        pdi,
+        key_bindings.into_inner(),
+    );
+
+    *facing_direction = new_facing_direction;
+
+    pdi_transform.rotate_around(
+        Vec3::new(0.0, 0.0, 0.0),
+        Quat::from_rotation_z(rotation_angle.0),
+    );
+}
+
+fn get_new_angle_and_facing_direction_for_pdi(
+    player_movement_direction: MovementDirection,
+    pdi_facing_direction: FacingDirection,
+    key_pressed: KeyCode,
+    mut pdi: Mut<PlayerDirectionIndicator>,
+    key_bindings: &KeyBindings,
+) -> (Rotation, FacingDirection) {
+    let new_rotation_angle: Rotation;
+    let new_facing_direction: FacingDirection;
+
+    if player_movement_direction != MovementDirection::Neutral
+        && player_movement_direction as u8 != pdi_facing_direction as u8
     {
-        pdi.lock_rotation_up = false;
-        pdi.lock_rotation_down = false;
-        pdi.lock_rotation_left = false;
-        pdi.lock_rotation_right = false;
-        rotation_angle = match player.movement_direction {
-            MovementDirection::Up => match *facing_direction {
-                FacingDirection::Up => 0.0,
-                FacingDirection::Down => PI,
-                FacingDirection::Left => 3.0 * PI / 2.0,
-                FacingDirection::Right => PI / 2.0,
+        new_rotation_angle = match player_movement_direction {
+            MovementDirection::Up => match pdi_facing_direction {
+                FacingDirection::Up => ZERO_PI,
+                FacingDirection::Down => Rotation(PI),
+                FacingDirection::Left => THREE_PI_OVER_TWO,
+                FacingDirection::Right => PI_OVER_TWO,
             },
-            MovementDirection::Down => match *facing_direction {
-                FacingDirection::Up => PI,
-                FacingDirection::Down => 0.0,
-                FacingDirection::Left => PI / 2.0,
-                FacingDirection::Right => 3.0 * PI / 2.0,
+            MovementDirection::Down => match pdi_facing_direction {
+                FacingDirection::Up => Rotation(PI),
+                FacingDirection::Down => ZERO_PI,
+                FacingDirection::Left => PI_OVER_TWO,
+                FacingDirection::Right => THREE_PI_OVER_TWO,
             },
-            MovementDirection::Left => match *facing_direction {
-                FacingDirection::Up => PI / 2.0,
-                FacingDirection::Down => 3.0 * PI / 2.0,
-                FacingDirection::Left => 0.0,
-                FacingDirection::Right => PI,
+            MovementDirection::Left => match pdi_facing_direction {
+                FacingDirection::Up => PI_OVER_TWO,
+                FacingDirection::Down => THREE_PI_OVER_TWO,
+                FacingDirection::Left => ZERO_PI,
+                FacingDirection::Right => Rotation(PI),
             },
-            MovementDirection::Right => match *facing_direction {
-                FacingDirection::Up => 3.0 * PI / 2.0,
-                FacingDirection::Down => PI / 2.0,
-                FacingDirection::Left => PI,
-                FacingDirection::Right => 0.0,
+            MovementDirection::Right => match pdi_facing_direction {
+                FacingDirection::Up => THREE_PI_OVER_TWO,
+                FacingDirection::Down => PI_OVER_TWO,
+                FacingDirection::Left => Rotation(PI),
+                FacingDirection::Right => ZERO_PI,
             },
-            MovementDirection::Neutral => 0.0,
+            MovementDirection::Neutral => ZERO_PI,
         };
-        *facing_direction = match player.movement_direction {
+        new_facing_direction = match player_movement_direction {
             MovementDirection::Up => FacingDirection::Up,
             MovementDirection::Down => FacingDirection::Down,
             MovementDirection::Left => FacingDirection::Left,
             MovementDirection::Right => FacingDirection::Right,
-            MovementDirection::Neutral => *facing_direction,
+            MovementDirection::Neutral => pdi_facing_direction,
         };
-    } else if player.movement_direction == MovementDirection::Neutral {
-        if keyboard.pressed(key_bindings.up) && !pdi.lock_rotation_up {
+    } else if player_movement_direction == MovementDirection::Neutral {
+        if key_pressed == key_bindings.up && !pdi.lock_rotation_up {
             pdi.lock_rotation_up = true;
             pdi.lock_rotation_down = false;
             pdi.lock_rotation_left = false;
             pdi.lock_rotation_right = false;
-            rotation_angle = match *facing_direction {
-                FacingDirection::Up => 0.0,
-                FacingDirection::Down => PI,
-                FacingDirection::Left => 3.0 * PI / 2.0,
-                FacingDirection::Right => PI / 2.0,
+            new_rotation_angle = match pdi_facing_direction {
+                FacingDirection::Up => ZERO_PI,
+                FacingDirection::Down => Rotation(PI),
+                FacingDirection::Left => THREE_PI_OVER_TWO,
+                FacingDirection::Right => PI_OVER_TWO,
             };
-            *facing_direction = FacingDirection::Up;
-        } else if keyboard.pressed(key_bindings.down) && !pdi.lock_rotation_down {
+            new_facing_direction = FacingDirection::Up;
+        } else if key_pressed == key_bindings.down && !pdi.lock_rotation_down {
             pdi.lock_rotation_up = false;
             pdi.lock_rotation_down = true;
             pdi.lock_rotation_left = false;
             pdi.lock_rotation_right = false;
-            rotation_angle = match *facing_direction {
-                FacingDirection::Up => PI,
-                FacingDirection::Down => 0.0,
-                FacingDirection::Left => PI / 2.0,
-                FacingDirection::Right => 3.0 * PI / 2.0,
+            new_rotation_angle = match pdi_facing_direction {
+                FacingDirection::Up => Rotation(PI),
+                FacingDirection::Down => ZERO_PI,
+                FacingDirection::Left => PI_OVER_TWO,
+                FacingDirection::Right => THREE_PI_OVER_TWO,
             };
-            *facing_direction = FacingDirection::Down;
-        } else if keyboard.pressed(key_bindings.left) && !pdi.lock_rotation_left {
+            new_facing_direction = FacingDirection::Down;
+        } else if key_pressed == key_bindings.left && !pdi.lock_rotation_left {
             pdi.lock_rotation_up = false;
             pdi.lock_rotation_down = false;
             pdi.lock_rotation_left = true;
             pdi.lock_rotation_right = false;
-            rotation_angle = match *facing_direction {
-                FacingDirection::Up => PI / 2.0,
-                FacingDirection::Down => 3.0 * PI / 2.0,
-                FacingDirection::Left => 0.0,
-                FacingDirection::Right => PI,
+            new_rotation_angle = match pdi_facing_direction {
+                FacingDirection::Up => PI_OVER_TWO,
+                FacingDirection::Down => THREE_PI_OVER_TWO,
+                FacingDirection::Left => ZERO_PI,
+                FacingDirection::Right => Rotation(PI),
             };
-            *facing_direction = FacingDirection::Left;
-        } else if keyboard.pressed(key_bindings.right) && !pdi.lock_rotation_right {
+            new_facing_direction = FacingDirection::Left;
+        } else if key_pressed == key_bindings.right && !pdi.lock_rotation_right {
             pdi.lock_rotation_up = false;
             pdi.lock_rotation_down = false;
             pdi.lock_rotation_left = false;
             pdi.lock_rotation_right = true;
-            rotation_angle = match *facing_direction {
-                FacingDirection::Up => 3.0 * PI / 2.0,
-                FacingDirection::Down => PI / 2.0,
-                FacingDirection::Left => PI,
-                FacingDirection::Right => 0.0,
+            new_rotation_angle = match pdi_facing_direction {
+                FacingDirection::Up => THREE_PI_OVER_TWO,
+                FacingDirection::Down => PI_OVER_TWO,
+                FacingDirection::Left => Rotation(PI),
+                FacingDirection::Right => ZERO_PI,
             };
-            *facing_direction = FacingDirection::Right;
+            new_facing_direction = FacingDirection::Right;
         } else {
-            rotation_angle = 0.0;
+            new_rotation_angle = ZERO_PI;
+            new_facing_direction = pdi_facing_direction;
         }
     } else {
-        rotation_angle = 0.0;
+        new_rotation_angle = ZERO_PI;
+        new_facing_direction = pdi_facing_direction;
     }
-    pdi_transform.rotate_around(
-        Vec3::new(0.0, 0.0, 0.0),
-        Quat::from_rotation_z(rotation_angle),
-    );
+    (new_rotation_angle, new_facing_direction)
+}
+
+#[cfg(test)]
+mod test_get_new_angle_and_facing_direction_for_pdi {
+    use super::*;
+
+    // #[test]
 }
 
 fn get_auto_movement_speed(transform: &Transform, delta_seconds: &f32, player: &mut Player) -> f32 {
@@ -234,6 +294,101 @@ fn get_auto_movement_speed(transform: &Transform, delta_seconds: &f32, player: &
         player.movement_direction = MovementDirection::Neutral;
     }
     delta
+}
+
+#[cfg(test)]
+mod tests_get_auto_movement_speed {
+    use super::*;
+
+    #[test]
+    fn test_get_auto_movement_speed_up() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::Up,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
+            6.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::Up);
+    }
+
+    #[test]
+    fn test_get_auto_movement_speed_down() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::Down,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
+            6.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::Down);
+    }
+
+    #[test]
+    fn test_get_auto_movement_speed_left() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::Left,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
+            6.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::Left);
+    }
+
+    #[test]
+    fn test_get_auto_movement_speed_right() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::Right,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
+            3.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::Neutral);
+    }
+
+    #[test]
+    fn test_get_auto_movement_speed_up_negative() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::Up,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, -295.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
+            6.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::Up);
+    }
+
+    #[test]
+    fn test_get_auto_movement_speed_down_negative() {
+        let mut player = Player {
+            speed: 3.0,
+            movement_direction: MovementDirection::Down,
+        };
+        let delta_seconds = 0.022913124;
+        let transform = Transform::from_translation(Vec3::new(97.0, -295.0, 0.0));
+        assert_eq!(
+            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
+            5.0
+        );
+        assert_eq!(player.movement_direction, MovementDirection::Neutral);
+    }
 }
 
 type Pte<'a, 'b> = (&'a mut Player, &'b mut Transform, Entity);
@@ -400,104 +555,4 @@ fn spawn_player(mut commands: Commands) {
                 },
             ));
         });
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_get_manual_movement_speed() {
-        assert_eq!(get_manual_movement_speed(1.0, 1.0), TILE_SIZE);
-    }
-
-    #[test]
-    fn test_get_auto_movement_speed_up() {
-        let mut player = Player {
-            speed: 3.0,
-            movement_direction: MovementDirection::Up,
-        };
-        let delta_seconds = 0.022913124;
-        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
-        assert_eq!(
-            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
-            6.0
-        );
-        assert_eq!(player.movement_direction, MovementDirection::Up);
-    }
-
-    #[test]
-    fn test_get_auto_movement_speed_down() {
-        let mut player = Player {
-            speed: 3.0,
-            movement_direction: MovementDirection::Down,
-        };
-        let delta_seconds = 0.022913124;
-        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
-        assert_eq!(
-            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
-            6.0
-        );
-        assert_eq!(player.movement_direction, MovementDirection::Down);
-    }
-
-    #[test]
-    fn test_get_auto_movement_speed_left() {
-        let mut player = Player {
-            speed: 3.0,
-            movement_direction: MovementDirection::Left,
-        };
-        let delta_seconds = 0.022913124;
-        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
-        assert_eq!(
-            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
-            6.0
-        );
-        assert_eq!(player.movement_direction, MovementDirection::Left);
-    }
-
-    #[test]
-    fn test_get_auto_movement_speed_right() {
-        let mut player = Player {
-            speed: 3.0,
-            movement_direction: MovementDirection::Right,
-        };
-        let delta_seconds = 0.022913124;
-        let transform = Transform::from_translation(Vec3::new(97.0, 55.0, 0.0));
-        assert_eq!(
-            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
-            3.0
-        );
-        assert_eq!(player.movement_direction, MovementDirection::Neutral);
-    }
-
-    #[test]
-    fn test_get_auto_movement_speed_up_negative() {
-        let mut player = Player {
-            speed: 3.0,
-            movement_direction: MovementDirection::Up,
-        };
-        let delta_seconds = 0.022913124;
-        let transform = Transform::from_translation(Vec3::new(97.0, -295.0, 0.0));
-        assert_eq!(
-            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
-            6.0
-        );
-        assert_eq!(player.movement_direction, MovementDirection::Up);
-    }
-
-    #[test]
-    fn test_get_auto_movement_speed_down_negative() {
-        let mut player = Player {
-            speed: 3.0,
-            movement_direction: MovementDirection::Down,
-        };
-        let delta_seconds = 0.022913124;
-        let transform = Transform::from_translation(Vec3::new(97.0, -295.0, 0.0));
-        assert_eq!(
-            get_auto_movement_speed(&transform, &delta_seconds, &mut player),
-            5.0
-        );
-        assert_eq!(player.movement_direction, MovementDirection::Neutral);
-    }
 }
