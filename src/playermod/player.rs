@@ -82,10 +82,7 @@ mod test_get_manual_movement_speed {
 
 fn rotate_player_direction_indicator(
     mut pdi_query: Query<
-        (
-            &mut Transform,
-            &mut FacingDirection,
-        ),
+        (&mut Transform, &mut FacingDirection),
         (With<PlayerDirectionIndicator>, Without<Player>),
     >,
     player_query: Query<&Player, With<Player>>,
