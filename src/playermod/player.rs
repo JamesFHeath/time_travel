@@ -17,7 +17,9 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+#[derive(PartialEq, Debug)]
 struct Rotation(f32);
+
 const PLAYER_SPEED: f32 = 4.0;
 const PI_OVER_TWO: Rotation = Rotation(PI / 2.0);
 const THREE_PI_OVER_TWO: Rotation = Rotation(3.0 * PI / 2.0);
@@ -32,7 +34,7 @@ pub enum MovementDirection {
     Neutral = 4,
 }
 
-#[derive(Clone, Component, Copy)]
+#[derive(Clone, Component, Copy, PartialEq, Debug)]
 pub enum FacingDirection {
     Up = 0,
     Down = 1,
@@ -41,12 +43,7 @@ pub enum FacingDirection {
 }
 
 #[derive(Component)]
-pub struct PlayerDirectionIndicator {
-    lock_rotation_up: bool,
-    lock_rotation_down: bool,
-    lock_rotation_left: bool,
-    lock_rotation_right: bool,
-}
+pub struct PlayerDirectionIndicator();
 
 #[derive(Component)]
 pub struct Player {
@@ -88,7 +85,6 @@ fn rotate_player_direction_indicator(
         (
             &mut Transform,
             &mut FacingDirection,
-            &mut PlayerDirectionIndicator,
         ),
         (With<PlayerDirectionIndicator>, Without<Player>),
     >,
@@ -97,12 +93,7 @@ fn rotate_player_direction_indicator(
     key_bindings: Res<KeyBindings>,
 ) {
     let player = player_query.single();
-    let (mut pdi_transform, mut facing_direction, mut pdi) = pdi_query.single_mut();
-
-    pdi.lock_rotation_up = false;
-    pdi.lock_rotation_down = false;
-    pdi.lock_rotation_left = false;
-    pdi.lock_rotation_right = false;
+    let (mut pdi_transform, mut facing_direction) = pdi_query.single_mut();
 
     let key_pressed: KeyCode;
 
@@ -122,7 +113,6 @@ fn rotate_player_direction_indicator(
         player.movement_direction,
         *facing_direction,
         key_pressed,
-        pdi,
         key_bindings.into_inner(),
     );
 
@@ -138,7 +128,6 @@ fn get_new_angle_and_facing_direction_for_pdi(
     player_movement_direction: MovementDirection,
     pdi_facing_direction: FacingDirection,
     key_pressed: KeyCode,
-    mut pdi: Mut<PlayerDirectionIndicator>,
     key_bindings: &KeyBindings,
 ) -> (Rotation, FacingDirection) {
     let new_rotation_angle: Rotation;
@@ -182,11 +171,7 @@ fn get_new_angle_and_facing_direction_for_pdi(
             MovementDirection::Neutral => pdi_facing_direction,
         };
     } else if player_movement_direction == MovementDirection::Neutral {
-        if key_pressed == key_bindings.up && !pdi.lock_rotation_up {
-            pdi.lock_rotation_up = true;
-            pdi.lock_rotation_down = false;
-            pdi.lock_rotation_left = false;
-            pdi.lock_rotation_right = false;
+        if key_pressed == key_bindings.up {
             new_rotation_angle = match pdi_facing_direction {
                 FacingDirection::Up => ZERO_PI,
                 FacingDirection::Down => Rotation(PI),
@@ -194,11 +179,7 @@ fn get_new_angle_and_facing_direction_for_pdi(
                 FacingDirection::Right => PI_OVER_TWO,
             };
             new_facing_direction = FacingDirection::Up;
-        } else if key_pressed == key_bindings.down && !pdi.lock_rotation_down {
-            pdi.lock_rotation_up = false;
-            pdi.lock_rotation_down = true;
-            pdi.lock_rotation_left = false;
-            pdi.lock_rotation_right = false;
+        } else if key_pressed == key_bindings.down {
             new_rotation_angle = match pdi_facing_direction {
                 FacingDirection::Up => Rotation(PI),
                 FacingDirection::Down => ZERO_PI,
@@ -206,11 +187,7 @@ fn get_new_angle_and_facing_direction_for_pdi(
                 FacingDirection::Right => THREE_PI_OVER_TWO,
             };
             new_facing_direction = FacingDirection::Down;
-        } else if key_pressed == key_bindings.left && !pdi.lock_rotation_left {
-            pdi.lock_rotation_up = false;
-            pdi.lock_rotation_down = false;
-            pdi.lock_rotation_left = true;
-            pdi.lock_rotation_right = false;
+        } else if key_pressed == key_bindings.left {
             new_rotation_angle = match pdi_facing_direction {
                 FacingDirection::Up => PI_OVER_TWO,
                 FacingDirection::Down => THREE_PI_OVER_TWO,
@@ -218,11 +195,7 @@ fn get_new_angle_and_facing_direction_for_pdi(
                 FacingDirection::Right => Rotation(PI),
             };
             new_facing_direction = FacingDirection::Left;
-        } else if key_pressed == key_bindings.right && !pdi.lock_rotation_right {
-            pdi.lock_rotation_up = false;
-            pdi.lock_rotation_down = false;
-            pdi.lock_rotation_left = false;
-            pdi.lock_rotation_right = true;
+        } else if key_pressed == key_bindings.right {
             new_rotation_angle = match pdi_facing_direction {
                 FacingDirection::Up => THREE_PI_OVER_TWO,
                 FacingDirection::Down => PI_OVER_TWO,
@@ -245,7 +218,21 @@ fn get_new_angle_and_facing_direction_for_pdi(
 mod test_get_new_angle_and_facing_direction_for_pdi {
     use super::*;
 
-    // #[test]
+    #[test]
+    fn test_player_moving_neutral_up_pressed_pdi_facing_up() {
+        let player_movement_direction = MovementDirection::Neutral;
+        let pdi_facing_direction = FacingDirection::Up;
+        let key_pressed = KeyCode::Up;
+        let key_bindings = KeyBindings::default();
+        let (new_rotation_angle, new_facing_direction) = get_new_angle_and_facing_direction_for_pdi(
+            player_movement_direction,
+            pdi_facing_direction,
+            key_pressed,
+            &key_bindings,
+        );
+        assert_eq!(new_rotation_angle, ZERO_PI);
+        assert_eq!(new_facing_direction, FacingDirection::Up);
+    }
 }
 
 fn get_auto_movement_speed(transform: &Transform, delta_seconds: &f32, player: &mut Player) -> f32 {
@@ -547,12 +534,7 @@ fn spawn_player(mut commands: Commands) {
                     Transform::from_translation(Vec3::new(0.0, TILE_SIZE / 6.0, 50.0)),
                 ),
                 FacingDirection::Up,
-                PlayerDirectionIndicator {
-                    lock_rotation_up: false,
-                    lock_rotation_down: false,
-                    lock_rotation_left: false,
-                    lock_rotation_right: false,
-                },
+                PlayerDirectionIndicator(),
             ));
         });
 }
