@@ -1,3 +1,4 @@
+use core::time::Duration;
 use std::{cmp::min, f32::consts::PI};
 
 use float_cmp::approx_eq;
@@ -10,9 +11,11 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(spawn_player.label("playerspawn"))
-            .add_system(player_movement.label("movement"))
+            .add_startup_system(rotation_pause_timer_init)
+            .init_resource::<RotationBeforeMoveTimer>()
+            .add_system(player_movement.label("movement").after("rotation"))
             .add_system(camera_follow.after("movement"))
-            .add_system(rotate_player_direction_indicator.after("movement"))
+            .add_system(rotate_player_direction_indicator.label("rotation"))
             .add_system(interact);
     }
 }
@@ -24,6 +27,17 @@ const PLAYER_SPEED: f32 = 4.0;
 const PI_OVER_TWO: Rotation = Rotation(PI / 2.0);
 const THREE_PI_OVER_TWO: Rotation = Rotation(3.0 * PI / 2.0);
 const ZERO_PI: Rotation = Rotation(0.0);
+
+const PAUSE_BEFORE_MOVE: f32 = 0.15;
+
+#[derive(Resource, Deref, DerefMut)]
+struct RotationBeforeMoveTimer(Timer);
+
+impl Default for RotationBeforeMoveTimer {
+    fn default() -> Self {
+        Self(Timer::from_seconds(PAUSE_BEFORE_MOVE, TimerMode::Once))
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MovementDirection {
@@ -66,6 +80,10 @@ fn interact(
     }
 }
 
+fn rotation_pause_timer_init(mut timer: ResMut<RotationBeforeMoveTimer>) {
+    timer.tick(Duration::from_secs((PAUSE_BEFORE_MOVE + 1.0) as u64));
+}
+
 pub fn get_manual_movement_speed(player_speed: f32, delta_seconds: f32) -> f32 {
     (player_speed * TILE_SIZE * delta_seconds) as i32 as f32
 }
@@ -88,6 +106,8 @@ fn rotate_player_direction_indicator(
     player_query: Query<&Player, With<Player>>,
     keyboard: Res<Input<KeyCode>>,
     key_bindings: Res<KeyBindings>,
+    mut pause_before_move: ResMut<RotationBeforeMoveTimer>,
+    time: Res<Time>,
 ) {
     let player = player_query.single();
     let (mut pdi_transform, mut facing_direction) = pdi_query.single_mut();
@@ -112,6 +132,12 @@ fn rotate_player_direction_indicator(
         key_pressed,
         key_bindings.into_inner(),
     );
+
+    if *facing_direction != new_facing_direction {
+        pause_before_move.0.reset();
+    }
+
+    pause_before_move.tick(time.delta());
 
     *facing_direction = new_facing_direction;
 
@@ -448,8 +474,12 @@ fn player_movement(
     time: Res<Time>,
     key_bindings: Res<KeyBindings>,
     hookshot_firing: Res<HookshotFiring>,
+    pause_before_move: ResMut<RotationBeforeMoveTimer>,
 ) {
     if hookshot_firing.0 {
+        return;
+    }
+    if !pause_before_move.finished() {
         return;
     }
     let (mut player, mut transform, entity) = player_query.single_mut();

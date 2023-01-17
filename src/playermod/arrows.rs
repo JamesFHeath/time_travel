@@ -168,7 +168,7 @@ fn fire_arrow(
                     fill_mode: FillMode::color(Color::MAROON),
                     outline_mode: StrokeMode::new(Color::BLACK, TILE_SIZE / 10.0),
                 },
-                Transform::from_translation(Vec3::new(arrow_x, arrow_y, PLAYER_LEVEL + 50.0)),
+                Transform::from_translation(Vec3::new(arrow_x, arrow_y, PLAYER_LEVEL - 50.0)),
             ),
             Arrow::new(*facing_direction, ARROW_SPEED, Vec2::new(arrow_width, arrow_length)),
         ));
